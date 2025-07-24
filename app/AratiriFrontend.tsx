@@ -28,13 +28,13 @@ const AratiriFrontend = () => {
 
   const [satsAmount, setSatsAmount] = useState("");
   const [memo, setMemo] = useState("");
-  const [generatedInvoice, setGeneratedInvoice] = useState(null);
+  const [generatedInvoice, setGeneratedInvoice] = useState<any>(null);
 
   const [paymentRequest, setPaymentRequest] = useState("");
-  const [decodedInvoice, setDecodedInvoice] = useState(null);
+  const [decodedInvoice, setDecodedInvoice] = useState<any>(null);
 
   const [paymentInvoice, setPaymentInvoice] = useState("");
-  const [paymentResponse, setPaymentResponse] = useState(null);
+  const [paymentResponse, setPaymentResponse] = useState<any>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -46,8 +46,8 @@ const AratiriFrontend = () => {
     }
   }, []);
 
-  const apiCall = async (endpoint, options = {}) => {
-    const headers = {
+  const apiCall = async (endpoint: any, options: any = {}) => {
+    const headers: any = {
       "Content-Type":
         options.body && typeof options.body === "string"
           ? "text/plain"
@@ -89,7 +89,7 @@ const AratiriFrontend = () => {
       setSuccess("Login successful!");
       setUsername("");
       setPassword("");
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
@@ -111,7 +111,7 @@ const AratiriFrontend = () => {
       }
       setIsAuthenticated(true);
       setSuccess("Google login successful!");
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
@@ -147,7 +147,7 @@ const AratiriFrontend = () => {
       setSuccess("Invoice generated successfully!");
       setSatsAmount("");
       setMemo("");
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
@@ -165,7 +165,7 @@ const AratiriFrontend = () => {
       );
       setDecodedInvoice(response);
       setSuccess("Invoice decoded successfully!");
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
@@ -186,19 +186,19 @@ const AratiriFrontend = () => {
       setPaymentResponse(response);
       setSuccess("Payment initiated successfully!");
       setPaymentInvoice("");
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const copyToClipboard = async (text) => {
+  const copyToClipboard = async (text: any) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to copy:", err);
     }
   };
