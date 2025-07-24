@@ -10,6 +10,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import GoogleLogin from "./GoogleLogin";
 
 const API_BASE_URL = "https://aratiri.diegoyegros.com/v1";
 
@@ -47,7 +48,10 @@ const AratiriFrontend = () => {
 
   const apiCall = async (endpoint, options = {}) => {
     const headers = {
-      "Content-Type": "application/json",
+      "Content-Type":
+        options.body && typeof options.body === "string"
+          ? "text/plain"
+          : "application/json",
       ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers,
     };
@@ -85,6 +89,28 @@ const AratiriFrontend = () => {
       setSuccess("Login successful!");
       setUsername("");
       setPassword("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loginWithGoogleToken = async (googleToken: string) => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await apiCall("/auth/sso/google", {
+        method: "POST",
+        body: googleToken,
+      });
+
+      setToken(response.token);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("aratiri_token", response.token);
+      }
+      setIsAuthenticated(true);
+      setSuccess("Google login successful!");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -227,6 +253,21 @@ const AratiriFrontend = () => {
             >
               {loading ? "Signing in..." : "Sign In"}
             </button>
+
+            {/* Separador y botón de Google */}
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="bg-white px-2 text-gray-500">Or</span>
+              </div>
+            </div>
+
+            <GoogleLogin
+              onSuccess={loginWithGoogleToken}
+              onError={(errorMsg) => setError(errorMsg)}
+            />
           </div>
 
           {error && (
@@ -235,17 +276,10 @@ const AratiriFrontend = () => {
               {error}
             </div>
           )}
-
-          {success && (
-            <div className="mt-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-md">
-              {success}
-            </div>
-          )}
         </div>
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
