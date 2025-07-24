@@ -166,7 +166,10 @@ const LoginScreen = ({ setToken, setIsAuthenticated }) => {
     try {
       const response = await apiCall("/auth/sso/google", {
         method: "POST",
-        body: JSON.stringify(googleToken),
+        body: googleToken,
+        headers: {
+          "Content-Type": "text/plain",
+        },
       });
 
       localStorage.setItem("aratiri_token", response.token);
