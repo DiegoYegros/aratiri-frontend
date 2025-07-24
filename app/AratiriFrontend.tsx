@@ -12,7 +12,7 @@ import {
 import { useEffect, useState } from "react";
 import GoogleLogin from "./GoogleLogin";
 
-const API_BASE_URL = "https://aratirilabs.diegoyegros.com/v1";
+const API_BASE_URL = "https://aratiri.diegoyegros.com/v1";
 
 const AratiriFrontend = () => {
   const [token, setToken] = useState("");
