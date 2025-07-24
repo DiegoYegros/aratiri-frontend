@@ -12,7 +12,7 @@ import {
 import { useEffect, useState } from "react";
 import GoogleLogin from "./GoogleLogin";
 
-const API_BASE_URL = "https://aratiri.diegoyegros.com/v1";
+const API_BASE_URL = "http://localhost:2100/v1";
 
 const AratiriFrontend = () => {
   const [token, setToken] = useState("");
@@ -48,10 +48,7 @@ const AratiriFrontend = () => {
 
   const apiCall = async (endpoint: any, options: any = {}) => {
     const headers: any = {
-      "Content-Type":
-        options.body && typeof options.body === "string"
-          ? "text/plain"
-          : "application/json",
+      "Content-Type": "application/json",
       ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers,
     };
