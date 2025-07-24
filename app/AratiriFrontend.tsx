@@ -48,7 +48,7 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
     typeof options.body === "string" &&
     options.body.startsWith("ey")
   ) {
-    headers.set("Content-Type", "application/json");
+    headers.set("Content-Type", "text/plain");
   } else if (options.body) {
     headers.set("Content-Type", "application/json");
   }
