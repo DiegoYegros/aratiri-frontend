@@ -10,6 +10,7 @@ import {
   History,
   LogOut,
   QrCode,
+  X,
   Zap,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -37,6 +38,16 @@ interface DecodedInvoice {
   expiry: number;
 }
 
+interface Notification {
+  id: number;
+  title: string;
+  message: string;
+  type: "success" | "error";
+}
+interface GoogleLoginProps {
+  onSuccess: (token: string) => void;
+  onError: (error: string) => void;
+}
 const API_BASE_URL = "https://aratiri.diegoyegros.com/v1";
 
 const apiCall = async (endpoint: string, options: RequestInit = {}) => {
@@ -82,11 +93,58 @@ declare global {
   }
 }
 
-interface GoogleLoginProps {
-  onSuccess: (token: string) => void;
-  onError: (error: string) => void;
-}
+const NotificationToast = ({
+  notification,
+  onClose,
+}: {
+  notification: Notification;
+  onClose: (id: number) => void;
+}) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose(notification.id);
+    }, 5000);
 
+    return () => clearTimeout(timer);
+  }, [notification.id, onClose]);
+
+  const bgColor =
+    notification.type === "success" ? "bg-green-500/20" : "bg-red-500/20";
+  const borderColor =
+    notification.type === "success" ? "border-green-400" : "border-red-400";
+  const iconColor =
+    notification.type === "success" ? "text-green-400" : "text-red-400";
+
+  return (
+    <div
+      className={`w-full max-w-sm rounded-lg shadow-lg pointer-events-auto overflow-hidden border ${borderColor} ${bgColor} backdrop-blur-sm animate-fade-in-right`}
+    >
+      <div className="p-4">
+        <div className="flex items-start">
+          <div className="flex-shrink-0">
+            {notification.type === "success" ? (
+              <Zap className={iconColor} />
+            ) : (
+              <X className={iconColor} />
+            )}
+          </div>
+          <div className="ml-3 w-0 flex-1 pt-0.5">
+            <p className="text-sm font-bold text-white">{notification.title}</p>
+            <p className="mt-1 text-sm text-gray-300">{notification.message}</p>
+          </div>
+          <div className="ml-4 flex-shrink-0 flex">
+            <button
+              onClick={() => onClose(notification.id)}
+              className="inline-flex text-gray-400 hover:text-white"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 const GoogleLogin = ({ onSuccess, onError }: GoogleLoginProps) => {
   const buttonDiv = useRef<HTMLDivElement>(null);
 
@@ -247,6 +305,7 @@ const Dashboard = ({ setIsAuthenticated, setToken }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("account");
+  const { notifications, addNotification, removeNotification } = useNotifier();
 
   const fetchAccountData = useCallback(async () => {
     try {
@@ -283,13 +342,96 @@ const Dashboard = ({ setIsAuthenticated, setToken }) => {
     };
     loadData();
   }, [fetchAccountData, fetchTransactions]);
+  useEffect(() => {
+    const token = localStorage.getItem("aratiri_token");
+    if (!token) return;
+
+    console.log("Setting up SSE connection...");
+    const controller = new AbortController();
+
+    const connectSse = async () => {
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/notifications/subscribe`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "text/event-stream",
+            },
+            signal: controller.signal,
+          }
+        );
+
+        if (!response.body) return;
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          const events = buffer.split("\n\n");
+
+          buffer = events.pop() || "";
+
+          for (const eventString of events) {
+            if (!eventString.trim()) continue;
+
+            let eventName = "message";
+            let eventData = "";
+
+            const lines = eventString.split("\n");
+            for (const line of lines) {
+              if (line.startsWith("event:")) {
+                eventName = line.substring(6).trim();
+              } else if (line.startsWith("data:")) {
+                eventData += line.substring(5).trim();
+              }
+            }
+
+            if (eventData) {
+              console.log(`Received SSE event: ${eventName}`, eventData);
+              if (eventName === "payment_received") {
+                try {
+                  const paymentData = JSON.parse(eventData);
+                  addNotification(
+                    "Payment Received",
+                    `${paymentData.amountSats.toLocaleString()} sats - ${
+                      paymentData.memo || "No description"
+                    }`,
+                    "success"
+                  );
+                } catch (e) {
+                  console.error("Failed to parse payment data:", e);
+                }
+              }
+            }
+          }
+        }
+      } catch (error: any) {
+        if (error.name !== "AbortError") {
+          console.error("SSE connection error:", error);
+        }
+      }
+    };
+
+    connectSse();
+
+    return () => {
+      console.log("Closing SSE connection.");
+      controller.abort();
+    };
+  }, []);
 
   const logout = () => {
     localStorage.removeItem("aratiri_token");
     setToken("");
     setIsAuthenticated(false);
   };
-
   const renderContent = () => {
     switch (activeTab) {
       case "account":
@@ -315,6 +457,15 @@ const Dashboard = ({ setIsAuthenticated, setToken }) => {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white font-sans flex flex-col">
+      <div className="fixed top-5 right-5 z-50 space-y-3 w-full max-w-sm">
+        {notifications.map((n) => (
+          <NotificationToast
+            key={n.id}
+            notification={n}
+            onClose={removeNotification}
+          />
+        ))}
+      </div>
       <header className="bg-gray-800/50 backdrop-blur-sm border-b border-yellow-500/20 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -723,6 +874,28 @@ const TransactionsTab = ({ transactions }) => {
       </div>
     </div>
   );
+};
+const useNotifier = () => {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  const addNotification = useCallback(
+    (title: string, message: string, type: "success" | "error" = "success") => {
+      const newNotification: Notification = {
+        id: new Date().getTime(),
+        title,
+        message,
+        type,
+      };
+      setNotifications((prev) => [...prev, newNotification]);
+    },
+    []
+  );
+
+  const removeNotification = useCallback((id: number) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  }, []);
+
+  return { notifications, addNotification, removeNotification };
 };
 
 export default function App() {
