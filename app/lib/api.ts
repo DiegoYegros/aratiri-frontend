@@ -14,7 +14,9 @@ export interface Transaction {
     | "ONCHAIN_DEPOSIT"
     | "INTERNAL_TRANSFER_CREDIT"
     | "INVOICE_DEBIT"
-    | "INTERNAL_TRANSFER_DEBIT";
+    | "INTERNAL_TRANSFER_DEBIT"
+    | "CREDIT"
+    | "DEBIT";
   amount: number;
   date: string;
   status: "PENDING" | "COMPLETED" | "FAILED";
@@ -35,8 +37,8 @@ export interface Notification {
   type: "success" | "error";
 }
 
-//export const API_BASE_URL = "https://aratiri.diegoyegros.com/v1";
-export const API_BASE_URL = "http://localhost:2100/v1";
+export const API_BASE_URL = "https://aratiri.diegoyegros.com/v1";
+//export const API_BASE_URL = "http://localhost:2100/v1";
 
 export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   const token = localStorage.getItem("aratiri_token");
