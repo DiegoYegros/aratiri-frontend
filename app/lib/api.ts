@@ -37,8 +37,8 @@ export interface Notification {
   type: "success" | "error";
 }
 
-export const API_BASE_URL = "https://aratiri.diegoyegros.com/v1";
-//export const API_BASE_URL = "http://localhost:2100/v1";
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "https://aratiri.diegoyegros.com/v1";
 
 export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   const token = localStorage.getItem("aratiri_token");
