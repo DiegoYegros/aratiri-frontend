@@ -8,8 +8,10 @@ import {
   Eye,
   EyeOff,
   History,
+  Loader,
   LogOut,
   QrCode,
+  ShieldAlert,
   X,
   Zap,
 } from "lucide-react";
@@ -25,9 +27,10 @@ interface Account {
 
 interface Transaction {
   id: string;
-  type: "CREDIT" | "DEBIT";
+  type: "DEBIT" | "CREDIT";
   amount: number;
   date: string;
+  status: "PENDING" | "COMPLETED" | "FAILED";
 }
 
 interface DecodedInvoice {
@@ -49,7 +52,7 @@ interface GoogleLoginProps {
   onError: (error: string) => void;
 }
 const API_BASE_URL = "https://aratiri.diegoyegros.com/v1";
-
+//const API_BASE_URL = "http://localhost:2100/v1";
 const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   const token = localStorage.getItem("aratiri_token");
   const headers = new Headers(options.headers || {});
@@ -345,6 +348,7 @@ const Dashboard = ({ setIsAuthenticated, setToken }) => {
     };
     loadData();
   }, [fetchAccountData, fetchTransactions]);
+
   useEffect(() => {
     const token = localStorage.getItem("aratiri_token");
     if (!token) return;
@@ -376,9 +380,7 @@ const Dashboard = ({ setIsAuthenticated, setToken }) => {
           if (done) break;
 
           buffer += decoder.decode(value, { stream: true });
-
           const events = buffer.split("\n\n");
-
           buffer = events.pop() || "";
 
           for (const eventString of events) {
@@ -408,6 +410,8 @@ const Dashboard = ({ setIsAuthenticated, setToken }) => {
                     }`,
                     "success"
                   );
+                  fetchAccountData();
+                  fetchTransactions();
                 } catch (e) {
                   console.error("Failed to parse payment data:", e);
                 }
@@ -428,13 +432,14 @@ const Dashboard = ({ setIsAuthenticated, setToken }) => {
       console.log("Closing SSE connection.");
       controller.abort();
     };
-  }, []);
+  }, [addNotification, fetchAccountData, fetchTransactions]);
 
   const logout = () => {
     localStorage.removeItem("aratiri_token");
     setToken("");
     setIsAuthenticated(false);
   };
+
   const renderContent = () => {
     switch (activeTab) {
       case "account":
@@ -832,43 +837,68 @@ const SendTab = () => {
   );
 };
 
-const TransactionsTab = ({ transactions }) => {
+const getTransactionProperties = (tx: Transaction) => {
+  const isCredit = tx.type.includes("CREDIT") || tx.type.includes("DEPOSIT");
+
+  switch (tx.status) {
+    case "PENDING":
+      return {
+        color: "text-yellow-400",
+        bgColor: "bg-yellow-500/20",
+        icon: <Loader className="animate-spin text-yellow-400" size={20} />,
+        text: `${isCredit ? "+" : "-"} ${tx.amount.toLocaleString()} sats`,
+        statusText: "Pending...",
+      };
+    case "FAILED":
+      return {
+        color: "text-gray-400",
+        bgColor: "bg-gray-500/20",
+        icon: <ShieldAlert className="text-gray-400" size={20} />,
+        text: (
+          <span className="line-through">
+            {isCredit ? "+" : "-"} {tx.amount.toLocaleString()} sats
+          </span>
+        ),
+        statusText: "Failed",
+      };
+    case "COMPLETED":
+    default:
+      return {
+        color: isCredit ? "text-green-400" : "text-red-400",
+        bgColor: isCredit ? "bg-green-500/20" : "bg-red-500/20",
+        icon: isCredit ? (
+          <ArrowLeft className="text-green-400" size={20} />
+        ) : (
+          <ArrowRight className="text-red-400" size={20} />
+        ),
+        text: `${isCredit ? "+" : "-"} ${tx.amount.toLocaleString()} sats`,
+        statusText: new Date(tx.date).toLocaleString(),
+      };
+  }
+};
+
+const TransactionsTab = ({ transactions }: { transactions: Transaction[] }) => {
   return (
     <div>
       <h2 className="text-2xl font-bold mb-6">Recent Transactions</h2>
       <div className="space-y-3">
         {transactions.length > 0 ? (
-          transactions.map((tx) => (
-            <div
-              key={tx.id}
-              className="bg-gray-700/50 p-4 rounded-lg flex justify-between items-center"
-            >
-              <div>
-                <p
-                  className={`font-bold ${
-                    tx.type === "CREDIT" ? "text-green-400" : "text-red-400"
-                  }`}
-                >
-                  {tx.type === "CREDIT" ? "+" : "-"}{" "}
-                  {tx.amount.toLocaleString()} sats
-                </p>
-                <p className="text-sm text-gray-400">
-                  {new Date(tx.date).toLocaleString()}
-                </p>
-              </div>
+          transactions.map((tx) => {
+            const { color, bgColor, icon, text, statusText } =
+              getTransactionProperties(tx);
+            return (
               <div
-                className={`p-2 rounded-full ${
-                  tx.type === "CREDIT" ? "bg-green-500/20" : "bg-red-500/20"
-                }`}
+                key={tx.id}
+                className="bg-gray-700/50 p-4 rounded-lg flex justify-between items-center"
               >
-                {tx.type === "CREDIT" ? (
-                  <ArrowLeft className="text-green-400" size={20} />
-                ) : (
-                  <ArrowRight className="text-red-400" size={20} />
-                )}
+                <div>
+                  <p className={`font-bold ${color}`}>{text}</p>
+                  <p className="text-sm text-gray-400">{statusText}</p>
+                </div>
+                <div className={`p-2 rounded-full ${bgColor}`}>{icon}</div>
               </div>
-            </div>
-          ))
+            );
+          })
         ) : (
           <p className="text-gray-400 text-center py-8">
             No transactions found in the last 30 days.
@@ -878,6 +908,7 @@ const TransactionsTab = ({ transactions }) => {
     </div>
   );
 };
+
 const useNotifier = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
