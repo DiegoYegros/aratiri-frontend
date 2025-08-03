@@ -40,6 +40,11 @@ export interface Notification {
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://aratiri.diegoyegros.com/v1";
 
+const forceLogout = () => {
+  localStorage.removeItem("aratiri_token");
+  window.dispatchEvent(new Event("force-logout"));
+};
+
 export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   const token = localStorage.getItem("aratiri_token");
   const headers = new Headers(options.headers || {});
@@ -64,6 +69,14 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      sessionStorage.setItem(
+        "login-message",
+        "Session expired. Please log-in again."
+      );
+      forceLogout();
+    }
+
     const errorData = await response
       .json()
       .catch(() => ({ message: "An unknown error occurred." }));

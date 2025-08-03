@@ -3,16 +3,58 @@ import { useEffect, useState } from "react";
 import { LoginScreen } from "./components/auth/LoginScreen";
 import { Dashboard } from "./components/dashboard/Dashboard";
 
-export default function App() {
+const decodeJwt = (token: string): { exp: number } | null => {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map(function (c) {
+          return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+        })
+        .join("")
+    );
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    return null;
+  }
+};
+
+export default function AratiriFrontend() {
   const [token, setToken] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loginMessage, setLoginMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const storedToken = localStorage.getItem("aratiri_token");
     if (storedToken) {
-      setToken(storedToken);
-      setIsAuthenticated(true);
+      const decodedToken = decodeJwt(storedToken);
+      if (decodedToken && decodedToken.exp * 1000 > Date.now()) {
+        setToken(storedToken);
+        setIsAuthenticated(true);
+      } else {
+        localStorage.removeItem("aratiri_token");
+        setLoginMessage("Session expired. Please log-in again.");
+      }
     }
+
+    const message = sessionStorage.getItem("login-message");
+    if (message) {
+      setLoginMessage(message);
+      sessionStorage.removeItem("login-message");
+    }
+
+    const handleForceLogout = () => {
+      setToken(null);
+      setIsAuthenticated(false);
+    };
+
+    window.addEventListener("force-logout", handleForceLogout);
+
+    return () => {
+      window.removeEventListener("force-logout", handleForceLogout);
+    };
   }, []);
 
   return (
@@ -21,6 +63,7 @@ export default function App() {
         <LoginScreen
           setToken={setToken}
           setIsAuthenticated={setIsAuthenticated}
+          initialMessage={loginMessage}
         />
       ) : (
         <Dashboard

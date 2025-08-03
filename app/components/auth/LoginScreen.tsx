@@ -1,16 +1,29 @@
 "use client";
-import { apiCall } from "@/app/lib/api";
 import { Zap } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { apiCall } from "../../lib/api";
 import GoogleLogin from "./GoogleLogin";
 
-export const LoginScreen = ({ setToken, setIsAuthenticated }: any) => {
+export const LoginScreen = ({
+  setToken,
+  setIsAuthenticated,
+  initialMessage,
+}: {
+  setToken: (token: string | null) => void;
+  setIsAuthenticated: (auth: boolean) => void;
+  initialMessage?: string | null;
+}) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(initialMessage || "");
+  useEffect(() => {
+    if (initialMessage) {
+      setError(initialMessage);
+    }
+  }, [initialMessage]);
 
-  const handleLogin = async (e: any) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
@@ -55,11 +68,11 @@ export const LoginScreen = ({ setToken, setIsAuthenticated }: any) => {
         <div className="text-center">
           <Zap className="w-16 h-16 text-yellow-400 mx-auto mb-4 animate-pulse" />
           <h1 className="text-4xl font-bold">Aratiri</h1>
-          <p className="text-gray-400">Bitcoin Lightning Wallet</p>
+          <p className="text-gray-400">Bitcoin Wallet</p>
         </div>
 
         {error && (
-          <div className="bg-red-500/20 border border-red-500 text-red-300 px-4 py-3 rounded-lg text-center">
+          <div className="bg-yellow-500/20 border border-yellow-500 text-yellow-300 px-4 py-3 rounded-lg text-center">
             {error}
           </div>
         )}
