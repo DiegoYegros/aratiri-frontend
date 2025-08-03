@@ -37,6 +37,6 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            cd /home/${{ secrets.SSH_USERNAME }}/aratiri-frontend
+            cd /home/${{ secrets.SSH_USERNAME }}/aratiri
             docker-compose pull aratiri-frontend
             docker-compose up -d --no-deps --force-recreate aratiri-frontend
