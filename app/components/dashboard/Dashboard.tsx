@@ -1,10 +1,12 @@
 "use client";
+import { useCurrency } from "@/app/hooks/useCurrency";
 import {
   ArrowLeft,
   ArrowRight,
   History,
   LogOut,
   QrCode,
+  Settings,
   Zap,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -14,6 +16,7 @@ import { NotificationToast } from "../ui/NotificationToast";
 import { AccountTab } from "./AccountTab";
 import { ReceiveTab } from "./ReceiveTab";
 import { SendTab } from "./SendTab";
+import { SettingsTab } from "./SettingsTab";
 import { TransactionsTab } from "./TransactionsTab";
 export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
   const [account, setAccount] = useState<Account | null>(null);
@@ -22,6 +25,13 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("account");
   const { notifications, addNotification, removeNotification } = useNotifier();
+
+  const {
+    selectedCurrency,
+    setSelectedCurrency,
+    availableCurrencies,
+    loading: currencyLoading,
+  } = useCurrency();
 
   const fetchAccountData = useCallback(async () => {
     try {
@@ -155,7 +165,21 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
       case "receive":
         return <ReceiveTab />;
       case "transactions":
-        return <TransactionsTab transactions={transactions} />;
+        return (
+          <TransactionsTab
+            transactions={transactions}
+            currency={selectedCurrency}
+          />
+        );
+      case "settings":
+        return (
+          <SettingsTab
+            selectedCurrency={selectedCurrency}
+            setSelectedCurrency={setSelectedCurrency}
+            availableCurrencies={availableCurrencies}
+            loading={currencyLoading}
+          />
+        );
       default:
         return null;
     }
@@ -251,6 +275,17 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
               >
                 <History />
                 <span>Transactions</span>
+              </button>
+              <button
+                onClick={() => setActiveTab("settings")}
+                className={`w-full flex items-center space-x-3 p-3 rounded-lg transition ${
+                  activeTab === "settings"
+                    ? "bg-yellow-400 text-gray-900"
+                    : "hover:bg-gray-700"
+                }`}
+              >
+                <Settings />
+                <span>Settings</span>
               </button>
             </div>
           </aside>

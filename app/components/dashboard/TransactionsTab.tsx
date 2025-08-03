@@ -2,9 +2,18 @@
 import { ArrowLeft, ArrowRight, Loader, ShieldAlert } from "lucide-react";
 import { Transaction } from "../../lib/api";
 
-const getTransactionProperties = (tx: Transaction) => {
-  const isCredit = tx.type.includes("CREDIT") || tx.type.includes("DEPOSIT");
+const currencyFormatter = (amount: number, currency: string): string => {
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
 
+const getTransactionProperties = (tx: Transaction, currency: string) => {
+  const isCredit = tx.type.includes("CREDIT") || tx.type.includes("DEPOSIT");
+  const fiatValue = tx.fiat_equivalents?.[currency];
   switch (tx.status) {
     case "PENDING":
       return {
@@ -13,6 +22,9 @@ const getTransactionProperties = (tx: Transaction) => {
         icon: <Loader className="animate-spin text-yellow-400" size={20} />,
         text: `${isCredit ? "+" : "-"} ${tx.amount.toLocaleString()} sats`,
         statusText: "Pending...",
+        fiatText: fiatValue
+          ? `~ ${currencyFormatter(fiatValue, currency)}`
+          : "",
       };
     case "FAILED":
       return {
@@ -25,6 +37,7 @@ const getTransactionProperties = (tx: Transaction) => {
           </span>
         ),
         statusText: "Failed",
+        fiatText: "",
       };
     case "COMPLETED":
     default:
@@ -38,14 +51,19 @@ const getTransactionProperties = (tx: Transaction) => {
         ),
         text: `${isCredit ? "+" : "-"} ${tx.amount.toLocaleString()} sats`,
         statusText: new Date(tx.date).toLocaleString(),
+        fiatText: fiatValue
+          ? `~ ${currencyFormatter(fiatValue, currency)}`
+          : "",
       };
   }
 };
 
 export const TransactionsTab = ({
   transactions,
+  currency,
 }: {
   transactions: Transaction[];
+  currency: string;
 }) => {
   return (
     <div>
@@ -53,8 +71,8 @@ export const TransactionsTab = ({
       <div className="space-y-3">
         {transactions.length > 0 ? (
           transactions.map((tx) => {
-            const { color, bgColor, icon, text, statusText } =
-              getTransactionProperties(tx);
+            const { color, bgColor, icon, text, statusText, fiatText } =
+              getTransactionProperties(tx, currency);
             return (
               <div
                 key={tx.id}
@@ -62,9 +80,21 @@ export const TransactionsTab = ({
               >
                 <div>
                   <p className={`font-bold ${color}`}>{text}</p>
-                  <p className="text-sm text-gray-400">{statusText}</p>
+                  {fiatText && (
+                    <p className="font-mono text-xs text-gray-500 mt-1">
+                      {fiatText}
+                    </p>
+                  )}
                 </div>
-                <div className={`p-2 rounded-full ${bgColor}`}>{icon}</div>
+
+                <div className="text-right">
+                  <p className="text-sm text-gray-400">{statusText}</p>
+                  <div
+                    className={`p-2 rounded-full ${bgColor} inline-block mt-1`}
+                  >
+                    {icon}
+                  </div>
+                </div>
               </div>
             );
           })

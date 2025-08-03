@@ -20,6 +20,9 @@ export interface Transaction {
   amount: number;
   date: string;
   status: "PENDING" | "COMPLETED" | "FAILED";
+  fiat_equivalents: {
+    [key: string]: number;
+  };
 }
 
 export interface DecodedInvoice {
