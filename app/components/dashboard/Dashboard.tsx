@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useNotifier } from "../../hooks/useNotifier";
-import { Account, apiCall, Transaction } from "../../lib/api";
+import { Account, API_BASE_URL, apiCall, Transaction } from "../../lib/api";
 import { NotificationToast } from "../ui/NotificationToast";
 import { ReceiveModal } from "./ReceiveModal";
 import { SendModal } from "./SendModal";
@@ -25,9 +25,9 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const { notifications, addNotification, removeNotification } = useNotifier();
-  const [balanceVisible, setBalanceVisible] = useState(true);
+  const [balanceVisible, setBalanceVisible] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
-  // Modal states
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
   const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -68,7 +68,12 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
     loadData();
   }, [fetchAllData]);
 
-  // SSE Effect remains largely the same, but we call fetchAllData
+  const toggleBalanceVisibility = () => {
+    const newVisibility = !balanceVisible;
+    setBalanceVisible(newVisibility);
+    localStorage.setItem("balanceVisible", JSON.stringify(newVisibility));
+  };
+
   useEffect(() => {
     const token = localStorage.getItem("aratiri_accessToken");
     if (!token) return;
@@ -76,10 +81,70 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
     const controller = new AbortController();
 
     const connectSse = async () => {
-      // ... SSE connection logic is the same ...
-      // In the "payment_received" event handler:
-      // addNotification(...)
-      // fetchAllData(); // Refresh all data
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/notifications/subscribe`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "text/event-stream",
+            },
+            signal: controller.signal,
+          }
+        );
+
+        if (!response.body) return;
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          const events = buffer.split("\n\n");
+
+          buffer = events.pop() || "";
+
+          for (const eventString of events) {
+            if (!eventString.trim()) continue;
+
+            let eventName = "message";
+            let eventData = "";
+            const lines = eventString.split("\n");
+            for (const line of lines) {
+              if (line.startsWith("event:")) {
+                eventName = line.substring(6).trim();
+              } else if (line.startsWith("data:")) {
+                eventData += line.substring(5).trim();
+              }
+            }
+
+            if (eventData && eventName === "payment_received") {
+              try {
+                const paymentData = JSON.parse(eventData);
+                addNotification(
+                  "Payment Received",
+                  `${paymentData.amountSats.toLocaleString()} sats - ${
+                    paymentData.memo || "No description"
+                  }`,
+                  "success"
+                );
+                fetchAllData();
+              } catch (e) {
+                console.error("Failed to parse payment data:", e);
+              }
+            }
+          }
+        }
+      } catch (error: any) {
+        if (error.name !== "AbortError") {
+          console.error("SSE connection error:", error);
+        }
+      }
     };
 
     connectSse();
@@ -88,6 +153,14 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
       controller.abort();
     };
   }, [addNotification, fetchAllData]);
+
+  useEffect(() => {
+    const storedVisibility = localStorage.getItem("balanceVisible");
+    if (storedVisibility !== null) {
+      setBalanceVisible(JSON.parse(storedVisibility));
+    }
+    setIsClient(true);
+  }, []);
 
   const logout = async () => {
     const refreshToken = localStorage.getItem("aratiri_refreshToken");
@@ -119,6 +192,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
     );
   }
 
+  const isBalanceVisible = isClient && balanceVisible;
   return (
     <div className="min-h-screen bg-gray-900 text-white font-sans flex flex-col">
       {/* Modals */}
@@ -205,16 +279,16 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
         <div className="text-center mb-8">
           <div className="flex justify-center items-center space-x-2">
             <h2 className="text-5xl font-bold tracking-tighter">
-              {balanceVisible
+              {isBalanceVisible
                 ? `${account?.balance.toLocaleString() || 0}`
                 : "•••••••"}
             </h2>
             <span className="text-2xl text-gray-400 font-light">sats</span>
             <button
-              onClick={() => setBalanceVisible(!balanceVisible)}
+              onClick={toggleBalanceVisibility}
               className="text-gray-400 hover:text-white"
             >
-              {balanceVisible ? <EyeOff size={24} /> : <Eye size={24} />}
+              {isBalanceVisible ? <EyeOff size={24} /> : <Eye size={24} />}
             </button>
           </div>
         </div>
@@ -241,6 +315,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
         <TransactionsTab
           transactions={transactions}
           currency={selectedCurrency}
+          balanceVisible={balanceVisible}
         />
       </main>
     </div>

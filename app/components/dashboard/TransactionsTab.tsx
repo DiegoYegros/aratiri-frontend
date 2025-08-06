@@ -1,5 +1,5 @@
 "use client";
-import { ArrowLeft, ArrowRight, Loader, ShieldAlert } from "lucide-react";
+import { useState } from "react";
 import { Transaction } from "../../lib/api";
 
 const currencyFormatter = (amount: number, currency: string): string => {
@@ -11,15 +11,27 @@ const currencyFormatter = (amount: number, currency: string): string => {
   }).format(amount);
 };
 
-const getTransactionProperties = (tx: Transaction, currency: string) => {
+const getTransactionProperties = (
+  tx: Transaction,
+  currency: string,
+  balanceVisible: boolean
+) => {
   const isCredit = tx.type.includes("CREDIT") || tx.type.includes("DEPOSIT");
   const fiatValue = tx.fiat_equivalents?.[currency];
+
+  if (!balanceVisible) {
+    return {
+      color: "text-gray-400",
+      text: "•••••••",
+      statusText: new Date(tx.date).toLocaleString(),
+      fiatText: "",
+    };
+  }
+
   switch (tx.status) {
     case "PENDING":
       return {
         color: "text-yellow-400",
-        bgColor: "bg-yellow-500/20",
-        icon: <Loader className="animate-spin text-yellow-400" size={20} />,
         text: `${isCredit ? "+" : "-"} ${tx.amount.toLocaleString()} sats`,
         statusText: "Pending...",
         fiatText: fiatValue
@@ -29,8 +41,6 @@ const getTransactionProperties = (tx: Transaction, currency: string) => {
     case "FAILED":
       return {
         color: "text-gray-400",
-        bgColor: "bg-gray-500/20",
-        icon: <ShieldAlert className="text-gray-400" size={20} />,
         text: (
           <span className="line-through">
             {isCredit ? "+" : "-"} {tx.amount.toLocaleString()} sats
@@ -43,12 +53,6 @@ const getTransactionProperties = (tx: Transaction, currency: string) => {
     default:
       return {
         color: isCredit ? "text-green-400" : "text-red-400",
-        bgColor: isCredit ? "bg-green-500/20" : "bg-red-500/20",
-        icon: isCredit ? (
-          <ArrowLeft className="text-green-400" size={20} />
-        ) : (
-          <ArrowRight className="text-red-400" size={20} />
-        ),
         text: `${isCredit ? "+" : "-"} ${tx.amount.toLocaleString()} sats`,
         statusText: new Date(tx.date).toLocaleString(),
         fiatText: fiatValue
@@ -61,18 +65,23 @@ const getTransactionProperties = (tx: Transaction, currency: string) => {
 export const TransactionsTab = ({
   transactions,
   currency,
+  balanceVisible,
 }: {
   transactions: Transaction[];
   currency: string;
+  balanceVisible: boolean;
 }) => {
+  const [showAll, setShowAll] = useState(false);
+  const visibleTransactions = showAll ? transactions : transactions.slice(0, 5);
+
   return (
     <div>
       <h2 className="text-2xl font-bold mb-6">Recent Transactions</h2>
       <div className="space-y-3">
         {transactions.length > 0 ? (
-          transactions.map((tx) => {
-            const { color, bgColor, icon, text, statusText, fiatText } =
-              getTransactionProperties(tx, currency);
+          visibleTransactions.map((tx) => {
+            const { color, text, statusText, fiatText } =
+              getTransactionProperties(tx, currency, balanceVisible);
             return (
               <div
                 key={tx.id}
@@ -89,11 +98,6 @@ export const TransactionsTab = ({
 
                 <div className="text-right">
                   <p className="text-sm text-gray-400">{statusText}</p>
-                  <div
-                    className={`p-2 rounded-full ${bgColor} inline-block mt-1`}
-                  >
-                    {icon}
-                  </div>
                 </div>
               </div>
             );
@@ -104,6 +108,16 @@ export const TransactionsTab = ({
           </p>
         )}
       </div>
+      {transactions.length > 5 && !showAll && (
+        <div className="text-center mt-4">
+          <button
+            onClick={() => setShowAll(true)}
+            className="text-yellow-400 hover:text-yellow-300"
+          >
+            See more
+          </button>
+        </div>
+      )}
     </div>
   );
 };
