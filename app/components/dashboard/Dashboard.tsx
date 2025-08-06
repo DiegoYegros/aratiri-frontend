@@ -70,7 +70,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
   }, [fetchAccountData, fetchTransactions]);
 
   useEffect(() => {
-    const token = localStorage.getItem("aratiri_token");
+    const token = localStorage.getItem("aratiri_accessToken");
     if (!token) return;
 
     const controller = new AbortController();
