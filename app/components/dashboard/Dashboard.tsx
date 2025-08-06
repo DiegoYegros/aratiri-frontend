@@ -150,10 +150,26 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
     };
   }, [addNotification, fetchAccountData, fetchTransactions]);
 
-  const logout = () => {
-    localStorage.removeItem("aratiri_token");
-    setToken("");
-    setIsAuthenticated(false);
+  const logout = async () => {
+    const refreshToken = localStorage.getItem("aratiri_refreshToken");
+    try {
+      if (refreshToken) {
+        await apiCall("/auth/logout", {
+          method: "POST",
+          body: JSON.stringify({ refreshToken }),
+        });
+      }
+    } catch (error) {
+      console.error(
+        "Logout failed on server, clearing client session anyway:",
+        error
+      );
+    } finally {
+      localStorage.removeItem("aratiri_accessToken");
+      localStorage.removeItem("aratiri_refreshToken");
+      setToken("");
+      setIsAuthenticated(false);
+    }
   };
 
   const renderContent = () => {

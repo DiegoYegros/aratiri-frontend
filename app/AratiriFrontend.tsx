@@ -27,15 +27,16 @@ export default function AratiriFrontend() {
   const [loginMessage, setLoginMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("aratiri_token");
+    const storedToken = localStorage.getItem("aratiri_accessToken");
     if (storedToken) {
       const decodedToken = decodeJwt(storedToken);
       if (decodedToken && decodedToken.exp * 1000 > Date.now()) {
         setToken(storedToken);
         setIsAuthenticated(true);
       } else {
-        localStorage.removeItem("aratiri_token");
-        setLoginMessage("Session expired. Please log-in again.");
+        localStorage.removeItem("aratiri_accessToken");
+        localStorage.removeItem("aratiri_refreshToken");
+        setLoginMessage("Your session has expired. Please log in again.");
       }
     }
 

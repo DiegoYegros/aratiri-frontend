@@ -17,11 +17,22 @@ export const LoginScreen = ({
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(initialMessage || "");
+
   useEffect(() => {
     if (initialMessage) {
       setError(initialMessage);
     }
   }, [initialMessage]);
+
+  const handleSuccessfulLogin = (response: {
+    accessToken: string;
+    refreshToken: string;
+  }) => {
+    localStorage.setItem("aratiri_accessToken", response.accessToken);
+    localStorage.setItem("aratiri_refreshToken", response.refreshToken);
+    setToken(response.accessToken);
+    setIsAuthenticated(true);
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,9 +43,7 @@ export const LoginScreen = ({
         method: "POST",
         body: JSON.stringify({ username, password }),
       });
-      localStorage.setItem("aratiri_token", response.token);
-      setToken(response.token);
-      setIsAuthenticated(true);
+      handleSuccessfulLogin(response);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -51,10 +60,7 @@ export const LoginScreen = ({
         body: googleToken,
         headers: { "Content-Type": "text/plain" },
       });
-
-      localStorage.setItem("aratiri_token", response.token);
-      setToken(response.token);
-      setIsAuthenticated(true);
+      handleSuccessfulLogin(response);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -68,7 +74,7 @@ export const LoginScreen = ({
         <div className="text-center">
           <Zap className="w-16 h-16 text-yellow-400 mx-auto mb-4 animate-pulse" />
           <h1 className="text-4xl font-bold">Aratiri</h1>
-          <p className="text-gray-400">Bitcoin Wallet</p>
+          <p className="text-gray-400">Bitcoin Lightning Wallet</p>
         </div>
 
         {error && (

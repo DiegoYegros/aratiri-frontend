@@ -43,52 +43,107 @@ export interface Notification {
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://aratiri.diegoyegros.com/v1";
 
+let isRefreshing = false;
+let failedQueue: any[] = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 const forceLogout = () => {
-  localStorage.removeItem("aratiri_token");
+  localStorage.removeItem("aratiri_accessToken");
+  localStorage.removeItem("aratiri_refreshToken");
   window.dispatchEvent(new Event("force-logout"));
 };
 
 export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
-  const token = localStorage.getItem("aratiri_token");
-  const headers = new Headers(options.headers || {});
+  const originalRequest = { endpoint, options };
+  let token = localStorage.getItem("aratiri_accessToken");
 
-  if (
-    options.body &&
-    typeof options.body === "string" &&
-    options.body.startsWith("ey")
-  ) {
-    headers.set("Content-Type", "text/plain");
-  } else if (options.body) {
+  const headers = new Headers(options.headers || {});
+  if (options.body) {
     headers.set("Content-Type", "application/json");
   }
-
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
 
-  if (!response.ok) {
-    if (response.status === 401) {
-      sessionStorage.setItem(
-        "login-message",
-        "Session expired. Please log-in again."
-      );
-      forceLogout();
+    if (!response.ok) {
+      if (response.status === 401) {
+        if (isRefreshing) {
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          })
+            .then((newToken) => {
+              headers.set("Authorization", `Bearer ${newToken}`);
+              return fetch(`${API_BASE_URL}${endpoint}`, {
+                ...options,
+                headers,
+              });
+            })
+            .catch((err) => {
+              return Promise.reject(err);
+            });
+        }
+
+        isRefreshing = true;
+        const refreshToken = localStorage.getItem("aratiri_refreshToken");
+        if (!refreshToken) {
+          forceLogout();
+          return Promise.reject(new Error("Session expired."));
+        }
+
+        return fetch(`${API_BASE_URL}/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken }),
+        })
+          .then((res) => res.json())
+          .then((tokens) => {
+            if (!tokens.accessToken)
+              throw new Error("Failed to refresh token.");
+            localStorage.setItem("aratiri_accessToken", tokens.accessToken);
+            localStorage.setItem("aratiri_refreshToken", tokens.refreshToken);
+            processQueue(null, tokens.accessToken);
+            headers.set("Authorization", `Bearer ${tokens.accessToken}`);
+            return fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+          })
+          .catch((err) => {
+            processQueue(err, null);
+            forceLogout();
+            return Promise.reject(err);
+          })
+          .finally(() => {
+            isRefreshing = false;
+          });
+      }
+
+      const errorData = await response
+        .json()
+        .catch(() => ({ message: "An unknown error occurred." }));
+      throw new Error(errorData.message || `HTTP Error: ${response.status}`);
     }
 
-    const errorData = await response
-      .json()
-      .catch(() => ({ message: "An unknown error occurred." }));
-    throw new Error(errorData.message || `HTTP Error: ${response.status}`);
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      return response.json();
+    }
+    return {};
+  } catch (error) {
+    console.error("API call error:", error);
+    throw error;
   }
-
-  const contentType = response.headers.get("content-type");
-  if (contentType && contentType.indexOf("application/json") !== -1) {
-    return response.json();
-  }
-  return {};
 };
