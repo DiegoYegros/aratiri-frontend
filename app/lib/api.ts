@@ -4,6 +4,9 @@ export interface Account {
   alias: string;
   lnurl: string;
   qr_code: string;
+  fiat_equivalents: {
+    [key: string]: number;
+  };
 }
 
 export interface Transaction {

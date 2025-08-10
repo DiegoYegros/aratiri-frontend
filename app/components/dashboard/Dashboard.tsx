@@ -39,6 +39,10 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
     loading: currencyLoading,
   } = useCurrency();
 
+  const [displayUnit, setDisplayUnit] = useState<"sats" | "fiat" | "btc">(
+    "sats"
+  );
+
   const fetchAllData = useCallback(async () => {
     try {
       const [accountData, transData] = await Promise.all([
@@ -58,6 +62,30 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
     }
   }, []);
 
+  const formatBalance = () => {
+    if (!isClient || !account) return "•••••••";
+    if (!balanceVisible) return "•••••••";
+
+    const balanceInSats = account.balance;
+    switch (displayUnit) {
+      case "sats":
+        return `${balanceInSats.toLocaleString()}`;
+      case "btc":
+        return `${(balanceInSats / 100_000_000).toFixed(8)}`;
+      case "fiat":
+        const fiatValue = account.fiat_equivalents[selectedCurrency];
+        if (fiatValue === undefined) return "N/A";
+        return `${fiatValue.toLocaleString(undefined, {
+          style: "decimal",
+          currency: selectedCurrency,
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}`;
+      default:
+        return `${balanceInSats.toLocaleString()}`;
+    }
+  };
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -68,7 +96,23 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
     loadData();
   }, [fetchAllData]);
 
-  const toggleBalanceVisibility = () => {
+  const toggleDisplayUnit = () => {
+    const units: ("sats" | "fiat" | "btc")[] = ["sats", "btc", "fiat"];
+    const currentIndex = units.indexOf(displayUnit);
+    const nextIndex = (currentIndex + 1) % units.length;
+    setDisplayUnit(units[nextIndex]);
+  };
+
+  const getDisplayUnitLabel = () => {
+    if (!balanceVisible) return "";
+
+    return displayUnit === "fiat"
+      ? selectedCurrency.toUpperCase()
+      : displayUnit;
+  };
+
+  const toggleBalanceVisibility = (e: React.MouseEvent) => {
+    e.stopPropagation();
     const newVisibility = !balanceVisible;
     setBalanceVisible(newVisibility);
     localStorage.setItem("balanceVisible", JSON.stringify(newVisibility));
@@ -277,18 +321,21 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
 
         {/* Balance Section */}
         <div className="text-center mb-8">
-          <div className="flex justify-center items-center space-x-2">
+          <div
+            className="flex justify-center items-center space-x-2 cursor-pointer"
+            onClick={toggleDisplayUnit}
+          >
             <h2 className="text-5xl font-bold tracking-tighter">
-              {isBalanceVisible
-                ? `${account?.balance.toLocaleString() || 0}`
-                : "•••••••"}
+              {formatBalance()}
             </h2>
-            <span className="text-2xl text-gray-400 font-light">sats</span>
+            <span className="text-2xl text-gray-400 font-light">
+              {getDisplayUnitLabel()}
+            </span>
             <button
               onClick={toggleBalanceVisibility}
               className="text-gray-400 hover:text-white"
             >
-              {isBalanceVisible ? <EyeOff size={24} /> : <Eye size={24} />}
+              {isBalanceVisible ? <Eye size={24} /> : <EyeOff size={24} />}
             </button>
           </div>
         </div>
@@ -316,6 +363,8 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
           transactions={transactions}
           currency={selectedCurrency}
           balanceVisible={balanceVisible}
+          displayUnit={displayUnit}
+          onUnitToggle={toggleDisplayUnit}
         />
       </main>
     </div>

@@ -1,4 +1,5 @@
 "use client";
+import { formatRelativeDate } from "@/app/lib/time";
 import { useState } from "react";
 import { Transaction } from "../../lib/api";
 
@@ -14,62 +15,70 @@ const currencyFormatter = (amount: number, currency: string): string => {
 const getTransactionProperties = (
   tx: Transaction,
   currency: string,
-  balanceVisible: boolean
+  balanceVisible: boolean,
+  displayUnit: "sats" | "btc" | "fiat"
 ) => {
   const isCredit = tx.type.includes("CREDIT") || tx.type.includes("DEPOSIT");
-  const fiatValue = tx.fiat_equivalents?.[currency];
+  const sign = isCredit ? "+" : "-";
 
-  if (!balanceVisible) {
-    return {
-      color: "text-gray-400",
-      text: "•••••••",
-      statusText: new Date(tx.date).toLocaleString(),
-      fiatText: "",
-    };
+  const formatAmount = () => {
+    if (!balanceVisible) {
+      return "•••••••";
+    }
+
+    switch (displayUnit) {
+      case "sats":
+        return `${sign} ${tx.amount.toLocaleString()} sats`;
+      case "btc":
+        const btcAmount = (tx.amount / 100_000_000).toFixed(8);
+        return `${sign} ${btcAmount} BTC`;
+      case "fiat":
+        const fiatValue = tx.fiat_equivalents?.[currency];
+        return fiatValue !== undefined
+          ? `${sign} ${currencyFormatter(fiatValue, currency)}`
+          : "N/A";
+      default:
+        return `${sign} ${tx.amount.toLocaleString()} sats`;
+    }
+  };
+  const statusText =
+    tx.status === "PENDING"
+      ? "Pending..."
+      : tx.status === "FAILED"
+      ? "Failed"
+      : formatRelativeDate(tx.date);
+
+  let textElement: React.ReactNode = formatAmount();
+  if (tx.status === "FAILED" && balanceVisible) {
+    textElement = <span className="line-through">{formatAmount()}</span>;
   }
 
-  switch (tx.status) {
-    case "PENDING":
-      return {
-        color: "text-yellow-400",
-        text: `${isCredit ? "+" : "-"} ${tx.amount.toLocaleString()} sats`,
-        statusText: "Pending...",
-        fiatText: fiatValue
-          ? `~ ${currencyFormatter(fiatValue, currency)}`
-          : "",
-      };
-    case "FAILED":
-      return {
-        color: "text-gray-400",
-        text: (
-          <span className="line-through">
-            {isCredit ? "+" : "-"} {tx.amount.toLocaleString()} sats
-          </span>
-        ),
-        statusText: "Failed",
-        fiatText: "",
-      };
-    case "COMPLETED":
-    default:
-      return {
-        color: isCredit ? "text-green-400" : "text-red-400",
-        text: `${isCredit ? "+" : "-"} ${tx.amount.toLocaleString()} sats`,
-        statusText: new Date(tx.date).toLocaleString(),
-        fiatText: fiatValue
-          ? `~ ${currencyFormatter(fiatValue, currency)}`
-          : "",
-      };
-  }
+  return {
+    color:
+      tx.status === "COMPLETED"
+        ? isCredit
+          ? "text-green-400"
+          : "text-red-400"
+        : tx.status === "PENDING"
+        ? "text-yellow-400"
+        : "text-gray-400",
+    text: textElement,
+    statusText: statusText,
+  };
 };
 
 export const TransactionsTab = ({
   transactions,
   currency,
   balanceVisible,
+  displayUnit,
+  onUnitToggle,
 }: {
   transactions: Transaction[];
   currency: string;
   balanceVisible: boolean;
+  displayUnit: "sats" | "btc" | "fiat";
+  onUnitToggle: () => void;
 }) => {
   const [showAll, setShowAll] = useState(false);
   const visibleTransactions = showAll ? transactions : transactions.slice(0, 5);
@@ -80,20 +89,23 @@ export const TransactionsTab = ({
       <div className="space-y-3">
         {transactions.length > 0 ? (
           visibleTransactions.map((tx) => {
-            const { color, text, statusText, fiatText } =
-              getTransactionProperties(tx, currency, balanceVisible);
+            const { color, text, statusText } = getTransactionProperties(
+              tx,
+              currency,
+              balanceVisible,
+              displayUnit
+            );
             return (
               <div
                 key={tx.id}
                 className="bg-gray-700/50 p-4 rounded-lg flex justify-between items-center"
               >
-                <div>
+                <div
+                  className="cursor-pointer"
+                  onClick={onUnitToggle}
+                  title="Click to change unit"
+                >
                   <p className={`font-bold ${color}`}>{text}</p>
-                  {fiatText && (
-                    <p className="font-mono text-xs text-gray-500 mt-1">
-                      {fiatText}
-                    </p>
-                  )}
                 </div>
 
                 <div className="text-right">
