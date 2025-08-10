@@ -3,7 +3,9 @@ export interface Account {
   balance: number;
   alias: string;
   lnurl: string;
-  qr_code: string;
+  lnurl_qr_code: string;
+  bitcoin_address: string;
+  bitcoin_address_qr_code: string;
   fiat_equivalents: {
     [key: string]: number;
   };
@@ -112,7 +114,7 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
         return fetch(`${API_BASE_URL}/auth/refresh`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken }),
+          body: JSON.stringify({ refreshToken: refreshToken }),
         })
           .then((res) => res.json())
           .then((tokens) => {

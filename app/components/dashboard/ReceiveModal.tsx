@@ -17,7 +17,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState("address");
+  const [activeTab, setActiveTab] = useState("lightning");
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -42,10 +42,10 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleShare = async () => {
+  const handleLightningShare = async () => {
     const shareData = {
       title: "My Lightning Address",
-      text: `You can send me Bitcoin sats on the Lightning Network using this address: ${account?.alias}`,
+      text: `You can send me Bitcoin on the Lightning Network using this address: ${account?.alias}`,
     };
 
     if (navigator.share) {
@@ -62,14 +62,25 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
     }
   };
 
-  const displayQrCode = invoice
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${invoice.payment_request}`
-    : `data:image/png;base64,${account?.qr_code}`;
+  const handleBitcoinShare = async () => {
+    const shareData = {
+      title: "My Bitcoin Address",
+      text: `You can send me Bitcoin On Chain using this address: ${account?.bitcoin_address}`,
+    };
 
-  const displayText = invoice
-    ? invoice.payment_request
-    : account?.alias || "loading...";
-  const textToCopy = invoice ? invoice.payment_request : account?.lnurl || "";
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        console.error("Error sharing:", err);
+      }
+    } else {
+      copyToClipboard(account?.bitcoin_address || "");
+      alert(
+        "Web Share API not supported in your browser. Address copied to clipboard instead."
+      );
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 animate-fade-in">
@@ -86,18 +97,28 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
 
         <div className="flex p-2 bg-gray-800/50">
           <button
-            onClick={() => setActiveTab("address")}
-            className={`w-1/2 py-2 text-sm font-semibold rounded-md transition-colors ${
-              activeTab === "address"
+            onClick={() => setActiveTab("lightning")}
+            className={`w-1/3 py-2 text-sm font-semibold rounded-md transition-colors ${
+              activeTab === "lightning"
                 ? "bg-slate-700 text-white"
                 : "text-gray-400 hover:bg-slate-800"
             }`}
           >
-            Lightning Address
+            Lightning
+          </button>
+          <button
+            onClick={() => setActiveTab("bitcoin")}
+            className={`w-1/3 py-2 text-sm font-semibold rounded-md transition-colors ${
+              activeTab === "bitcoin"
+                ? "bg-slate-700 text-white"
+                : "text-gray-400 hover:bg-slate-800"
+            }`}
+          >
+            Bitcoin
           </button>
           <button
             onClick={() => setActiveTab("request")}
-            className={`w-1/2 py-2 text-sm font-semibold rounded-md transition-colors ${
+            className={`w-1/3 py-2 text-sm font-semibold rounded-md transition-colors ${
               activeTab === "request"
                 ? "bg-slate-700 text-white"
                 : "text-gray-400 hover:bg-slate-800"
@@ -108,13 +129,17 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
         </div>
 
         <div className="p-6 overflow-y-auto">
-          {activeTab === "address" && (
+          {activeTab === "lightning" && (
             <div className="text-center">
               <div className="bg-white p-4 rounded-lg inline-block">
-                <img src={displayQrCode} alt="QR Code" className="w-48 h-48" />
+                <img
+                  src={`data:image/png;base64,${account?.lnurl_qr_code}`}
+                  alt="LNURL QR Code"
+                  className="w-48 h-48"
+                />
               </div>
               <div className="mt-4">
-                <p className="text-gray-400 text-sm mb-2">Your Username</p>
+                <p className="text-gray-400 text-sm mb-2">Lightning Address</p>
                 <div className="bg-gray-800 rounded-lg px-4 py-3 flex items-center justify-between">
                   <span className="font-mono text-sm truncate">
                     {account?.alias}
@@ -122,6 +147,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                   <button
                     onClick={() => copyToClipboard(account?.lnurl || "")}
                     className="p-2 text-gray-400 hover:text-white rounded-full"
+                    title="Copy LNURL"
                   >
                     {copied ? (
                       <Check size={18} className="text-green-500" />
@@ -132,7 +158,47 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                 </div>
               </div>
               <button
-                onClick={handleShare}
+                onClick={handleLightningShare}
+                className="mt-6 w-full bg-slate-700 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-600 transition flex items-center justify-center"
+              >
+                <Share2 size={18} className="mr-2" />
+                Share
+              </button>
+            </div>
+          )}
+
+          {activeTab === "bitcoin" && (
+            <div className="text-center">
+              <div className="bg-white p-4 rounded-lg inline-block">
+                <img
+                  src={`data:image/png;base64,${account?.bitcoin_address_qr_code}`}
+                  alt="Bitcoin Address QR Code"
+                  className="w-48 h-48"
+                />
+              </div>
+              <div className="mt-4">
+                <p className="text-gray-400 text-sm mb-2">Bitcoin Address</p>
+                <div className="bg-gray-800 rounded-lg px-4 py-3 flex items-center justify-between">
+                  <span className="font-mono text-sm break-all">
+                    {account?.bitcoin_address}
+                  </span>
+                  <button
+                    onClick={() =>
+                      copyToClipboard(account?.bitcoin_address || "")
+                    }
+                    className="p-2 text-gray-400 hover:text-white rounded-full"
+                    title="Copy Bitcoin Address"
+                  >
+                    {copied ? (
+                      <Check size={18} className="text-green-500" />
+                    ) : (
+                      <ClipboardCopy size={18} />
+                    )}
+                  </button>
+                </div>
+              </div>
+              <button
+                onClick={handleBitcoinShare}
                 className="mt-6 w-full bg-slate-700 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-600 transition flex items-center justify-center"
               >
                 <Share2 size={18} className="mr-2" />
