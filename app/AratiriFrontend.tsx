@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { LoginScreen } from "./components/auth/LoginScreen";
+import { RegisterScreen } from "./components/auth/RegisterScreen";
 import { Dashboard } from "./components/dashboard/Dashboard";
 
 const decodeJwt = (token: string): { exp: number } | null => {
@@ -25,6 +26,7 @@ export default function AratiriFrontend() {
   const [token, setToken] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginMessage, setLoginMessage] = useState<string | null>(null);
+  const [showRegister, setShowRegister] = useState(false);
 
   useEffect(() => {
     const storedToken = localStorage.getItem("aratiri_accessToken");
@@ -61,11 +63,19 @@ export default function AratiriFrontend() {
   return (
     <>
       {!isAuthenticated ? (
-        <LoginScreen
-          setToken={setToken}
-          setIsAuthenticated={setIsAuthenticated}
-          initialMessage={loginMessage}
-        />
+        showRegister ? (
+          <RegisterScreen
+            setToken={setToken}
+            setIsAuthenticated={setIsAuthenticated}
+          />
+        ) : (
+          <LoginScreen
+            setToken={setToken}
+            setIsAuthenticated={setIsAuthenticated}
+            initialMessage={loginMessage}
+            setShowRegister={setShowRegister}
+          />
+        )
       ) : (
         <Dashboard
           setToken={setToken}

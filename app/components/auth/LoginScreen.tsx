@@ -8,10 +8,12 @@ export const LoginScreen = ({
   setToken,
   setIsAuthenticated,
   initialMessage,
+  setShowRegister,
 }: {
   setToken: (token: string | null) => void;
   setIsAuthenticated: (auth: boolean) => void;
   initialMessage?: string | null;
+  setShowRegister: (show: boolean) => void;
 }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -122,6 +124,14 @@ export const LoginScreen = ({
           onSuccess={handleGoogleSuccess}
           onError={(errorMsg) => setError(errorMsg)}
         />
+        <div className="text-center">
+          <button
+            onClick={() => setShowRegister(true)}
+            className="text-yellow-400 hover:text-yellow-300"
+          >
+            Create new account
+          </button>
+        </div>
         <div className="absolute bottom-4 right-4 text-xs text-gray-500">
           v0.1.0
         </div>
