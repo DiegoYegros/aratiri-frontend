@@ -32,7 +32,7 @@ export default function RootLayout({
         {}
         <Script
           src="https://accounts.google.com/gsi/client"
-          strategy="beforeInteractive"
+          strategy="lazyOnload"
           async
           defer
         />
