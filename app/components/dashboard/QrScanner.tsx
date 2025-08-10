@@ -16,6 +16,7 @@ export const QrScanner = ({ onScanSuccess, onClose }: QrScannerProps) => {
   useEffect(() => {
     let stream: MediaStream | null = null;
     let animationFrameId: number | null = null;
+    let isCancelled = false;
 
     const tick = () => {
       if (
@@ -45,9 +46,15 @@ export const QrScanner = ({ onScanSuccess, onClose }: QrScannerProps) => {
 
     const startCamera = async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "environment" },
         });
+        if (isCancelled) {
+          mediaStream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
+        stream = mediaStream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           videoRef.current.setAttribute("playsinline", "true");
@@ -65,6 +72,7 @@ export const QrScanner = ({ onScanSuccess, onClose }: QrScannerProps) => {
     startCamera();
 
     return () => {
+      isCancelled = true;
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
       }
