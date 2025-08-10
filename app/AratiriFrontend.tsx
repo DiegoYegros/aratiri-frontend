@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { ForgotPasswordScreen } from "./components/auth/ForgotPasswordScreen";
 import { LoginScreen } from "./components/auth/LoginScreen";
 import { RegisterScreen } from "./components/auth/RegisterScreen";
 import { Dashboard } from "./components/dashboard/Dashboard";
@@ -27,6 +28,7 @@ export default function AratiriFrontend() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginMessage, setLoginMessage] = useState<string | null>(null);
   const [showRegister, setShowRegister] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   useEffect(() => {
     const storedToken = localStorage.getItem("aratiri_accessToken");
@@ -60,28 +62,35 @@ export default function AratiriFrontend() {
     };
   }, []);
 
+  if (isAuthenticated) {
+    return (
+      <Dashboard setToken={setToken} setIsAuthenticated={setIsAuthenticated} />
+    );
+  }
+
+  if (showRegister) {
+    return (
+      <RegisterScreen
+        setToken={setToken}
+        setIsAuthenticated={setIsAuthenticated}
+        setShowRegister={setShowRegister}
+      />
+    );
+  }
+
+  if (showForgotPassword) {
+    return (
+      <ForgotPasswordScreen setShowForgotPassword={setShowForgotPassword} />
+    );
+  }
+
   return (
-    <>
-      {!isAuthenticated ? (
-        showRegister ? (
-          <RegisterScreen
-            setToken={setToken}
-            setIsAuthenticated={setIsAuthenticated}
-          />
-        ) : (
-          <LoginScreen
-            setToken={setToken}
-            setIsAuthenticated={setIsAuthenticated}
-            initialMessage={loginMessage}
-            setShowRegister={setShowRegister}
-          />
-        )
-      ) : (
-        <Dashboard
-          setToken={setToken}
-          setIsAuthenticated={setIsAuthenticated}
-        />
-      )}
-    </>
+    <LoginScreen
+      setToken={setToken}
+      setIsAuthenticated={setIsAuthenticated}
+      initialMessage={loginMessage}
+      setShowRegister={setShowRegister}
+      setShowForgotPassword={setShowForgotPassword}
+    />
   );
 }

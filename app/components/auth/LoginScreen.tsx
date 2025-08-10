@@ -9,11 +9,13 @@ export const LoginScreen = ({
   setIsAuthenticated,
   initialMessage,
   setShowRegister,
+  setShowForgotPassword,
 }: {
   setToken: (token: string | null) => void;
   setIsAuthenticated: (auth: boolean) => void;
   initialMessage?: string | null;
   setShowRegister: (show: boolean) => void;
+  setShowForgotPassword: (show: boolean) => void;
 }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -102,6 +104,15 @@ export const LoginScreen = ({
             className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
             required
           />
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={() => setShowForgotPassword(true)}
+              className="text-sm text-yellow-400 hover:text-yellow-300"
+            >
+              Forgot Password?
+            </button>
+          </div>
           <button
             type="submit"
             disabled={loading}

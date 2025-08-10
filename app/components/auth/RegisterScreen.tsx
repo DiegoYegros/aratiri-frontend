@@ -1,18 +1,21 @@
 "use client";
-import { Zap } from "lucide-react";
+import { ArrowLeft, Zap } from "lucide-react";
 import { useState } from "react";
 import { apiCall } from "../../lib/api";
 
 export const RegisterScreen = ({
   setToken,
   setIsAuthenticated,
+  setShowRegister,
 }: {
   setToken: (token: string | null) => void;
   setIsAuthenticated: (auth: boolean) => void;
+  setShowRegister: (show: boolean) => void;
 }) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [alias, setAlias] = useState("");
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,6 +24,10 @@ export const RegisterScreen = ({
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -58,11 +65,24 @@ export const RegisterScreen = ({
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4 font-sans">
-      <div className="w-full max-w-md bg-gray-800 rounded-2xl shadow-lg p-8 space-y-6 border border-yellow-500/20">
+      <div className="relative w-full max-w-md bg-gray-800 rounded-2xl shadow-lg p-8 space-y-6 border border-yellow-500/20">
+        <button
+          onClick={() =>
+            isVerification ? setIsVerification(false) : setShowRegister(false)
+          }
+          className="absolute top-4 left-4 p-2 text-gray-400 hover:text-white"
+        >
+          <ArrowLeft />
+        </button>
+
         <div className="text-center">
           <Zap className="w-16 h-16 text-yellow-400 mx-auto mb-4 animate-pulse" />
           <h1 className="text-4xl font-bold">Aratiri</h1>
-          <p className="text-gray-400">Create a new account</p>
+          <p className="text-gray-400">
+            {isVerification
+              ? "Enter verification code"
+              : "Create a new account"}
+          </p>
         </div>
 
         {error && (
@@ -94,6 +114,14 @@ export const RegisterScreen = ({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
+              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
+              required
+            />
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Confirm Password"
               className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
               required
             />
