@@ -125,121 +125,46 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
     const token = localStorage.getItem("aratiri_accessToken");
     if (!token) return;
 
-    const controller = new AbortController();
+    const eventSource = new EventSource(
+      `${API_BASE_URL}/notifications/subscribe?token=${encodeURIComponent(
+        token
+      )}`
+    );
 
-    const connectSse = async () => {
-      try {
-        console.log("Connecting to SSE...");
-        const response = await fetch(
-          `${API_BASE_URL}/notifications/subscribe`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: "text/event-stream",
-              "Cache-Control": "no-cache",
-            },
-            signal: controller.signal,
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`SSE connection failed: ${response.status}`);
-        }
-
-        if (!response.body) {
-          throw new Error("Response body is null");
-        }
-
-        console.log("SSE connection established");
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            console.log("SSE connection ended");
-            break;
-          }
-          buffer += decoder.decode(value, { stream: true });
-          const parts = buffer.split("\n\n");
-
-          buffer = parts.pop() || "";
-
-          for (const part of parts) {
-            if (!part.trim()) continue;
-
-            console.log("Raw SSE event:", part);
-
-            const lines = part.split("\n");
-            let eventType = "message";
-            let data = "";
-
-            for (const line of lines) {
-              const colonIndex = line.indexOf(":");
-              if (colonIndex === -1) continue;
-
-              const field = line.substring(0, colonIndex).trim();
-              const value = line.substring(colonIndex + 1).trim();
-
-              if (field === "event") {
-                eventType = value;
-              } else if (field === "data") {
-                data += value;
-              }
-            }
-
-            console.log("Parsed event type:", eventType, "data:", data);
-
-            if (eventType === "payment_received" && data) {
-              try {
-                const paymentData = JSON.parse(data);
-                console.log("Payment data received:", paymentData);
-
-                const amountSats =
-                  paymentData.amountSats || paymentData.amount || 0;
-                const memo =
-                  paymentData.memo ||
-                  paymentData.description ||
-                  "No description";
-
-                addNotification(
-                  "Payment Received",
-                  `${amountSats.toLocaleString()} sats - ${memo}`,
-                  "success"
-                );
-
-                console.log("Calling fetchAllData after payment received");
-                await fetchAllData();
-              } catch (parseError) {
-                console.error(
-                  "Failed to parse payment data:",
-                  parseError,
-                  "Raw data:",
-                  data
-                );
-              }
-            }
-          }
-        }
-      } catch (error: any) {
-        if (error.name !== "AbortError") {
-          console.error("SSE connection error:", error);
-          setTimeout(() => {
-            if (!controller.signal.aborted) {
-              console.log("Attempting to reconnect SSE...");
-              connectSse();
-            }
-          }, 5000);
-        }
-      }
+    eventSource.onopen = () => {
+      console.log("SSE connection opened");
     };
 
-    connectSse();
+    eventSource.onmessage = (event) => {
+      console.log("Received message:", event.data);
+    };
+
+    eventSource.addEventListener("payment_received", (event) => {
+      console.log("Payment received event:", event.data);
+      try {
+        const paymentData = JSON.parse(event.data);
+        const amountSats = paymentData.amountSats || paymentData.amount || 0;
+        const memo =
+          paymentData.memo || paymentData.description || "No description";
+
+        addNotification(
+          "Payment Received",
+          `${amountSats.toLocaleString()} sats - ${memo}`,
+          "success"
+        );
+
+        fetchAllData();
+      } catch (error) {
+        console.error("Failed to parse payment data:", error);
+      }
+    });
+
+    eventSource.onerror = (error) => {
+      console.error("SSE error:", error);
+    };
 
     return () => {
-      console.log("Cleaning up SSE connection");
-      controller.abort();
+      eventSource.close();
     };
   }, [addNotification, fetchAllData]);
 
