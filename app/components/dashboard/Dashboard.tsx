@@ -45,6 +45,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
 
   const fetchAllData = useCallback(async () => {
     try {
+      console.log("Fetching all data...");
       const [accountData, transData] = await Promise.all([
         apiCall("/accounts/account"),
         apiCall(
@@ -55,9 +56,11 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
           }&to=${new Date().toISOString().split("T")[0]}`
         ),
       ]);
+      console.log("Data fetched successfully:", { accountData, transData });
       setAccount(accountData);
       setTransactions(transData.transactions || []);
     } catch (err: any) {
+      console.error("Failed to fetch data:", err);
       setError("Failed to fetch data: " + err.message);
     }
   }, []);
@@ -126,60 +129,95 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
 
     const connectSse = async () => {
       try {
+        console.log("Connecting to SSE...");
         const response = await fetch(
           `${API_BASE_URL}/notifications/subscribe`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
               Accept: "text/event-stream",
+              "Cache-Control": "no-cache",
             },
             signal: controller.signal,
           }
         );
 
-        if (!response.body) return;
+        if (!response.ok) {
+          throw new Error(`SSE connection failed: ${response.status}`);
+        }
 
+        if (!response.body) {
+          throw new Error("Response body is null");
+        }
+
+        console.log("SSE connection established");
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
 
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
-
+          if (done) {
+            console.log("SSE connection ended");
+            break;
+          }
           buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split("\n\n");
 
-          const events = buffer.split("\n\n");
+          buffer = parts.pop() || "";
 
-          buffer = events.pop() || "";
+          for (const part of parts) {
+            if (!part.trim()) continue;
 
-          for (const eventString of events) {
-            if (!eventString.trim()) continue;
+            console.log("Raw SSE event:", part);
 
-            let eventName = "message";
-            let eventData = "";
-            const lines = eventString.split("\n");
+            const lines = part.split("\n");
+            let eventType = "message";
+            let data = "";
+
             for (const line of lines) {
-              if (line.startsWith("event:")) {
-                eventName = line.substring(6).trim();
-              } else if (line.startsWith("data:")) {
-                eventData += line.substring(5).trim();
+              const colonIndex = line.indexOf(":");
+              if (colonIndex === -1) continue;
+
+              const field = line.substring(0, colonIndex).trim();
+              const value = line.substring(colonIndex + 1).trim();
+
+              if (field === "event") {
+                eventType = value;
+              } else if (field === "data") {
+                data += value;
               }
             }
 
-            if (eventData && eventName === "payment_received") {
+            console.log("Parsed event type:", eventType, "data:", data);
+
+            if (eventType === "payment_received" && data) {
               try {
-                const paymentData = JSON.parse(eventData);
+                const paymentData = JSON.parse(data);
+                console.log("Payment data received:", paymentData);
+
+                const amountSats =
+                  paymentData.amountSats || paymentData.amount || 0;
+                const memo =
+                  paymentData.memo ||
+                  paymentData.description ||
+                  "No description";
+
                 addNotification(
                   "Payment Received",
-                  `${paymentData.amountSats.toLocaleString()} sats - ${
-                    paymentData.memo || "No description"
-                  }`,
+                  `${amountSats.toLocaleString()} sats - ${memo}`,
                   "success"
                 );
-                fetchAllData();
-              } catch (e) {
-                console.error("Failed to parse payment data:", e);
+
+                console.log("Calling fetchAllData after payment received");
+                await fetchAllData();
+              } catch (parseError) {
+                console.error(
+                  "Failed to parse payment data:",
+                  parseError,
+                  "Raw data:",
+                  data
+                );
               }
             }
           }
@@ -187,6 +225,12 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
       } catch (error: any) {
         if (error.name !== "AbortError") {
           console.error("SSE connection error:", error);
+          setTimeout(() => {
+            if (!controller.signal.aborted) {
+              console.log("Attempting to reconnect SSE...");
+              connectSse();
+            }
+          }, 5000);
         }
       }
     };
@@ -194,6 +238,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
     connectSse();
 
     return () => {
+      console.log("Cleaning up SSE connection");
       controller.abort();
     };
   }, [addNotification, fetchAllData]);

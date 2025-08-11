@@ -14,11 +14,13 @@ export interface Account {
 export interface Transaction {
   id: string;
   type:
+    | "LIGHTNING_DEBIT"
+    | "LIGHTNING_CREDIT"
+    | "ONCHAIN_DEBIT"
+    | "ONCHAIN_CREDIT"
     | "INVOICE_CREDIT"
-    | "LN_PAYMENT_DEBIT"
-    | "ONCHAIN_DEPOSIT"
-    | "INTERNAL_TRANSFER_CREDIT"
     | "INVOICE_DEBIT"
+    | "INTERNAL_TRANSFER_CREDIT"
     | "INTERNAL_TRANSFER_DEBIT"
     | "CREDIT"
     | "DEBIT";
@@ -79,7 +81,6 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
   }
-
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
