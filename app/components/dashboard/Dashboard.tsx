@@ -125,46 +125,87 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
     const token = localStorage.getItem("aratiri_accessToken");
     if (!token) return;
 
-    const eventSource = new EventSource(
-      `${API_BASE_URL}/notifications/subscribe?token=${encodeURIComponent(
-        token
-      )}`
-    );
+    let ws: any;
+    let reconnectTimeout: any;
 
-    eventSource.onopen = () => {
-      console.log("SSE connection opened");
+    const connectWebSocket = () => {
+      console.log("Connecting to WebSocket...");
+      const wsUrl = `${API_BASE_URL.replace(
+        "http",
+        "ws"
+      )}/notifications/subscribe?token=${token}`;
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log("WebSocket connection established");
+        if (reconnectTimeout) {
+          clearTimeout(reconnectTimeout);
+        }
+      };
+
+      ws.onmessage = (event) => {
+        console.log("Raw WebSocket message:", event.data);
+
+        try {
+          const message = JSON.parse(event.data);
+          const eventType = message.event;
+          const eventData = message.data;
+
+          console.log("Parsed event type:", eventType, "data:", eventData);
+
+          if (eventType === "payment_received" && eventData) {
+            const amountSats = eventData.amountSats || 0;
+            const memo = eventData.memo || "No description";
+
+            addNotification(
+              "Payment Received",
+              `${amountSats.toLocaleString()} sats - ${memo}`,
+              "success"
+            );
+
+            fetchAllData();
+          } else if (eventType === "payment_sent") {
+            console.log("Payment sent event received, refreshing data...");
+            fetchAllData();
+          } else if (eventType === "connected") {
+            console.log("Connected to WebSocket:", eventData);
+          }
+        } catch (parseError) {
+          console.error(
+            "Failed to parse WebSocket message:",
+            parseError,
+            "Raw data:",
+            event.data
+          );
+        }
+      };
+
+      ws.onclose = (event) => {
+        console.log("WebSocket connection closed:", event.reason);
+        if (!event.wasClean) {
+          reconnectTimeout = setTimeout(() => {
+            console.log("Attempting to reconnect WebSocket...");
+            connectWebSocket();
+          }, 5000);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        ws.close();
+      };
     };
 
-    eventSource.onmessage = (event) => {
-      console.log("Received message:", event.data);
-    };
-
-    eventSource.addEventListener("payment_received", (event) => {
-      console.log("Payment received event:", event.data);
-      try {
-        const paymentData = JSON.parse(event.data);
-        const amountSats = paymentData.amountSats || paymentData.amount || 0;
-        const memo =
-          paymentData.memo || paymentData.description || "No description";
-
-        addNotification(
-          "Payment Received",
-          `${amountSats.toLocaleString()} sats - ${memo}`,
-          "success"
-        );
-
-        fetchAllData();
-      } catch (error) {
-        console.error("Failed to parse payment data:", error);
-      }
-    });
-
-    eventSource.onerror = (error) => {
-      console.error("SSE error:", error);
-    };
-
+    connectWebSocket();
     return () => {
-      eventSource.close();
+      console.log("Cleaning up WebSocket connection");
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+      if (ws) {
+        ws.onclose = null;
+        ws.close();
+      }
     };
   }, [addNotification, fetchAllData]);
 
