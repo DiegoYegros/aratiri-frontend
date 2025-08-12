@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Aratiri Frontend",
+  title: "Aratiri - Bitcoin Wallet",
   description: "Frontend for the Aratiri Lightning Middleware",
 };
 
