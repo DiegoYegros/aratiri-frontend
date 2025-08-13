@@ -40,6 +40,27 @@ export interface DecodedInvoice {
   expiry: number;
 }
 
+export interface LnurlParams {
+  tag: string;
+  status: string;
+  callback: string;
+  minSendable: number;
+  maxSendable: number;
+  metadata: string;
+  commentAllowed?: number;
+}
+
+export interface DecodedResponse {
+  type:
+    | "lightning_invoice"
+    | "lnurl_params"
+    | "bitcoin_address"
+    | "alias"
+    | "error";
+  data: DecodedInvoice | LnurlParams | string | null;
+  error?: string;
+}
+
 export interface Notification {
   id: number;
   title: string;

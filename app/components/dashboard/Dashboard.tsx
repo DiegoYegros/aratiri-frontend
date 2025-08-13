@@ -143,7 +143,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
         }
       };
 
-      ws.onmessage = (event) => {
+      ws.onmessage = (event: any) => {
         console.log("Raw WebSocket message:", event.data);
 
         try {
@@ -180,7 +180,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
         }
       };
 
-      ws.onclose = (event) => {
+      ws.onclose = (event: any) => {
         console.log("WebSocket connection closed:", event.reason);
         if (!event.wasClean) {
           reconnectTimeout = setTimeout(() => {
@@ -190,7 +190,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
         }
       };
 
-      ws.onerror = (error) => {
+      ws.onerror = (error: any) => {
         console.error("WebSocket error:", error);
         ws.close();
       };
