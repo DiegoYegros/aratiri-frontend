@@ -23,6 +23,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
   const [account, setAccount] = useState<Account | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState("");
   const { notifications, addNotification, removeNotification } = useNotifier();
   const [balanceVisible, setBalanceVisible] = useState(false);
@@ -64,6 +65,23 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
       setError("Failed to fetch data: " + err.message);
     }
   }, []);
+
+  const handleRefresh = async () => {
+    if (isRefreshing) return;
+
+    const startTime = Date.now();
+    setIsRefreshing(true);
+
+    await fetchAllData();
+
+    const elapsedTime = Date.now() - startTime;
+    const animationDuration = 1500;
+    const remainingTime = animationDuration - (elapsedTime % animationDuration);
+
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, remainingTime);
+  };
 
   const formatBalance = () => {
     if (!isClient || !account) return "•••••••";
@@ -300,8 +318,15 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
       <header className="bg-gray-800/50 backdrop-blur-sm border-b border-yellow-500/20 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-3">
-              <Zap className="w-8 h-8 text-yellow-400" />
+            <div
+              className="flex items-center space-x-3 cursor-pointer"
+              onClick={handleRefresh}
+            >
+              <Zap
+                className={`w-8 h-8 text-yellow-400 ${
+                  isRefreshing ? "animate-spin-smooth" : ""
+                }`}
+              />
               <h1 className="text-xl font-bold">Aratiri</h1>
             </div>
             <div className="flex items-center space-x-4">
