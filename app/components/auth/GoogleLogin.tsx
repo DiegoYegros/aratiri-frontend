@@ -1,7 +1,6 @@
-// app/GoogleLogin.tsx
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 declare global {
   interface Window {
     google: any;
@@ -15,20 +14,25 @@ interface GoogleLoginProps {
 
 const GoogleLogin = ({ onSuccess, onError }: GoogleLoginProps) => {
   const buttonDiv = useRef<HTMLDivElement>(null);
+  const [scriptLoaded, setScriptLoaded] = useState(false);
 
   useEffect(() => {
-    if (typeof window.google === "undefined" || !buttonDiv.current) {
-      const timeout = setTimeout(() => {
-        initializeGoogleButton();
-      }, 100);
-      return () => clearTimeout(timeout);
-    }
+    const scriptTag = document.createElement("script");
+    scriptTag.src = "https://accounts.google.com/gsi/client";
+    scriptTag.async = true;
+    scriptTag.defer = true;
+    scriptTag.onload = () => {
+      setScriptLoaded(true);
+    };
+    document.body.appendChild(scriptTag);
 
-    initializeGoogleButton();
+    return () => {
+      document.body.removeChild(scriptTag);
+    };
   }, []);
 
-  const initializeGoogleButton = () => {
-    if (typeof window.google !== "undefined" && buttonDiv.current) {
+  useEffect(() => {
+    if (scriptLoaded && buttonDiv.current) {
       window.google.accounts.id.initialize({
         client_id:
           "254642422573-4l9v69dl2km5c9gqj7m7hr2gli059vk8.apps.googleusercontent.com",
@@ -42,7 +46,7 @@ const GoogleLogin = ({ onSuccess, onError }: GoogleLoginProps) => {
         text: "signin_with",
       });
     }
-  };
+  }, [scriptLoaded]);
 
   const handleCredentialResponse = (response: any) => {
     if (response.credential) {
