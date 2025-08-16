@@ -1,5 +1,5 @@
 "use client";
-import { Bitcoin, Edit, QrCode, X } from "lucide-react";
+import { ArrowLeft, Bitcoin, Edit, QrCode, X } from "lucide-react";
 import { useState } from "react";
 import {
   apiCall,
@@ -149,6 +149,12 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
     }
   };
 
+  const handleBack = () => {
+    setDecoded(null);
+    setError("");
+    setSuccess("");
+  };
+
   const renderDecodedContent = () => {
     if (!decoded || !decoded.data) return null;
 
@@ -235,7 +241,6 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
       case "bitcoin_address":
         return (
           <div className="mt-6 bg-gray-900/50 p-4 rounded-lg space-y-4 animate-fade-in">
-            <h3 className="font-bold text-lg">On-Chain Payment</h3>
             <div className="relative">
               <Bitcoin
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -296,7 +301,19 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 animate-fade-in">
       <div className="bg-gray-800 p-6 rounded-2xl w-full max-w-md m-4 border border-yellow-500/20">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">Send Payment</h2>
+          {decoded ? (
+            <button
+              onClick={handleBack}
+              className="p-2 text-gray-400 hover:text-white"
+            >
+              <ArrowLeft />
+            </button>
+          ) : (
+            <div className="w-8" />
+          )}
+          <h2 className="text-2xl font-bold">
+            {decoded ? "Details" : "Send Payment"}
+          </h2>
           <button
             onClick={onClose}
             className="p-2 text-gray-400 hover:text-white"
@@ -305,34 +322,38 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
           </button>
         </div>
 
-        <div className="space-y-4">
-          <textarea
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Paste Invoice, LNURL, Address, or Alias"
-            className="w-full h-32 px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 font-mono text-sm"
-          />
-          <div className="flex space-x-2">
-            <button
-              onClick={() => handleDecode(inputValue)}
-              disabled={loading || !inputValue}
-              className="flex-grow bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-500 disabled:opacity-50 transition"
-            >
-              {loading ? "Decoding..." : "Decode"}
-            </button>
-            <button
-              onClick={() => setIsScanning(true)}
-              className="bg-gray-600 text-white p-3 rounded-lg hover:bg-gray-500 disabled:opacity-50 transition"
-              title="Scan QR Code"
-            >
-              <QrCode />
-            </button>
+        {!decoded && (
+          <div className="space-y-4">
+            <textarea
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="Paste Invoice, LNURL, Address, or Alias"
+              className="w-full h-32 px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 font-mono text-sm"
+            />
+            <div className="flex space-x-2">
+              <button
+                onClick={() => handleDecode(inputValue)}
+                disabled={loading || !inputValue}
+                className="flex-grow bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-500 disabled:opacity-50 transition"
+              >
+                {loading ? "Decoding..." : "Decode"}
+              </button>
+              <button
+                onClick={() => setIsScanning(true)}
+                className="bg-gray-600 text-white p-3 rounded-lg hover:bg-gray-500 disabled:opacity-50 transition"
+                title="Scan QR Code"
+              >
+                <QrCode />
+              </button>
+            </div>
           </div>
-          {error && <div className="text-red-400 text-center">{error}</div>}
-          {success && (
-            <div className="text-green-400 text-center">{success}</div>
-          )}
-        </div>
+        )}
+
+        {error && <div className="text-red-400 text-center mt-4">{error}</div>}
+        {success && (
+          <div className="text-green-400 text-center mt-4">{success}</div>
+        )}
+
         {renderDecodedContent()}
       </div>
     </div>
