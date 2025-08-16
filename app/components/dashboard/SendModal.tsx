@@ -5,6 +5,7 @@ import {
   apiCall,
   DecodedInvoice,
   DecodedResponse,
+  EstimateFeeResponse,
   LnurlParams,
 } from "../../lib/api";
 import { QrScanner } from "./QrScanner";
@@ -23,6 +24,10 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
   const [isScanning, setIsScanning] = useState(false);
   const [lnurlAmount, setLnurlAmount] = useState("");
   const [lnurlComment, setLnurlComment] = useState("");
+  const [onChainAmount, setOnChainAmount] = useState("");
+  const [fee, setFee] = useState<EstimateFeeResponse | null>(null);
+  const [showFee, setShowFee] = useState(false);
+
   const handleDecode = async (valueToDecode: string) => {
     if (!valueToDecode) return;
     setLoading(true);
@@ -31,6 +36,9 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
     setSuccess("");
     setLnurlAmount("");
     setLnurlComment("");
+    setOnChainAmount("");
+    setFee(null);
+    setShowFee(false);
 
     try {
       const data: DecodedResponse = await apiCall(
@@ -53,6 +61,31 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
     setInputValue(data);
     setIsScanning(false);
     handleDecode(data);
+  };
+
+  const handleEstimateFee = async () => {
+    if (!decoded || decoded.type !== "bitcoin_address" || !onChainAmount)
+      return;
+    setLoading(true);
+    setError("");
+    try {
+      const data: EstimateFeeResponse = await apiCall(
+        "/payments/onchain/estimate-fee",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            address: decoded.data,
+            sats_amount: parseInt(onChainAmount),
+          }),
+        }
+      );
+      setFee(data);
+      setShowFee(true);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handlePay = async () => {
@@ -89,6 +122,14 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
             callback: params.callback,
             amount_msat: amountMsat,
             comment: lnurlComment,
+          }),
+        });
+      } else if (decoded.type === "bitcoin_address") {
+        data = await apiCall("/payments/onchain", {
+          method: "POST",
+          body: JSON.stringify({
+            address: decoded.data,
+            sats_amount: parseInt(onChainAmount),
           }),
         });
       } else {
@@ -193,8 +234,47 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
 
       case "bitcoin_address":
         return (
-          <div className="mt-6 text-center text-gray-400">
-            On-chain payments coming soon!
+          <div className="mt-6 bg-gray-900/50 p-4 rounded-lg space-y-4 animate-fade-in">
+            <h3 className="font-bold text-lg">On-Chain Payment</h3>
+            <div className="relative">
+              <Bitcoin
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                size={20}
+              />
+              <input
+                type="number"
+                value={onChainAmount}
+                onChange={(e) => setOnChainAmount(e.target.value)}
+                placeholder="Amount (sats)"
+                className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+                disabled={showFee}
+              />
+            </div>
+            {showFee && fee ? (
+              <div className="text-center">
+                <p>Fee: {fee.fee_sat.toLocaleString()} sats</p>
+                <p>
+                  Total:{" "}
+                  {(parseInt(onChainAmount) + fee.fee_sat).toLocaleString()}{" "}
+                  sats
+                </p>
+                <button
+                  onClick={handlePay}
+                  disabled={loading}
+                  className="w-full mt-4 bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 disabled:opacity-50 transition"
+                >
+                  {loading ? "Sending..." : "Confirm and Send"}
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleEstimateFee}
+                disabled={loading || !onChainAmount}
+                className="w-full bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 disabled:opacity-50 transition"
+              >
+                {loading ? "Estimating Fee..." : "Continue"}
+              </button>
+            )}
           </div>
         );
 

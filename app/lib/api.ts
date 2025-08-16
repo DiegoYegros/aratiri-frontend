@@ -60,6 +60,10 @@ export interface DecodedResponse {
   data: DecodedInvoice | LnurlParams | string | null;
   error?: string;
 }
+export interface EstimateFeeResponse {
+  fee_sat: number;
+  sat_per_vbyte: number;
+}
 
 export interface Notification {
   id: number;
