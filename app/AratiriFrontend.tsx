@@ -4,6 +4,7 @@ import { ForgotPasswordScreen } from "./components/auth/ForgotPasswordScreen";
 import { LoginScreen } from "./components/auth/LoginScreen";
 import { RegisterScreen } from "./components/auth/RegisterScreen";
 import { Dashboard } from "./components/dashboard/Dashboard";
+import { ThemeProvider } from "./hooks/useTheme";
 
 const decodeJwt = (token: string): { exp: number } | null => {
   try {
@@ -62,35 +63,30 @@ export default function AratiriFrontend() {
     };
   }, []);
 
-  if (isAuthenticated) {
-    return (
-      <Dashboard setToken={setToken} setIsAuthenticated={setIsAuthenticated} />
-    );
-  }
-
-  if (showRegister) {
-    return (
-      <RegisterScreen
-        setToken={setToken}
-        setIsAuthenticated={setIsAuthenticated}
-        setShowRegister={setShowRegister}
-      />
-    );
-  }
-
-  if (showForgotPassword) {
-    return (
-      <ForgotPasswordScreen setShowForgotPassword={setShowForgotPassword} />
-    );
-  }
-
   return (
-    <LoginScreen
-      setToken={setToken}
-      setIsAuthenticated={setIsAuthenticated}
-      initialMessage={loginMessage}
-      setShowRegister={setShowRegister}
-      setShowForgotPassword={setShowForgotPassword}
-    />
+    <ThemeProvider>
+      {isAuthenticated ? (
+        <Dashboard
+          setToken={setToken}
+          setIsAuthenticated={setIsAuthenticated}
+        />
+      ) : showRegister ? (
+        <RegisterScreen
+          setToken={setToken}
+          setIsAuthenticated={setIsAuthenticated}
+          setShowRegister={setShowRegister}
+        />
+      ) : showForgotPassword ? (
+        <ForgotPasswordScreen setShowForgotPassword={setShowForgotPassword} />
+      ) : (
+        <LoginScreen
+          setToken={setToken}
+          setIsAuthenticated={setIsAuthenticated}
+          initialMessage={loginMessage}
+          setShowRegister={setShowRegister}
+          setShowForgotPassword={setShowForgotPassword}
+        />
+      )}
+    </ThemeProvider>
   );
 }

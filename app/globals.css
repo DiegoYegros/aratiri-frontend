@@ -1,18 +1,46 @@
 @import "tailwindcss";
 
-:root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
-  --primary: #facc15; /* yellow-400 */
-  --primary-foreground: #171717;
-  --secondary: #27272a; /* zinc-800 */
-  --secondary-foreground: #a1a1aa; /* zinc-400 */
-  --accent: #a16207; /* yellow-600 */
-  --success: #4ade80; /* green-400 */
-  --destructive: #f87171; /* red-400 */
-  --border: #3f3f46; /* zinc-700 */
-  --ring: #facc15;
+:root[data-theme="Default"] {
+  --background: #1c2128;          /* Dark blue-gray */
+  --foreground: #e6edf3;          /* Soft white text */
+  --primary: #c9a34a;             /* Muted warm gold */
+  --primary-foreground: #161b22;  /* Dark text on gold */
+  --secondary: #2a313c;           /* Card / surface */
+  --secondary-foreground: #9da5b1;/* Subtext / metadata */
+  --success: #3fb950;             /* Green */
+  --destructive: #da3633;         /* Red */
+  --border: #343c47;              /* Border gray */
+  --ring: #c9a34a;                /* Match primary */
 }
+
+:root[data-theme="Aratiri"] {
+  --background: #0e0e0e;          /* Rich black */
+  --foreground: #f5f5f5;          /* Clean white-gray */
+  --primary: #f2a900;             /* Bitcoin gold */
+  --primary-foreground: #0e0e0e;  /* Contrast text */
+  --secondary: #1c1c1c;           /* Surface gray */
+  --secondary-foreground: #aaaaaa;/* Muted text */
+  --accent: #333333;              /* Soft divider */
+  --success: #00b15d;
+  --destructive: #e05252;
+  --border: #2d2d2d;
+  --ring: #f2a900;
+}
+
+:root[data-theme="Bitcoin"] {
+  --background: #181818;          /* Charcoal */
+  --foreground: #f8f8f8;          /* Bright but soft */
+  --primary: #f7931a;             /* Bitcoin orange */
+  --primary-foreground: #181818;  /* Contrast text */
+  --secondary: #222222;           /* Surface */
+  --secondary-foreground: #b0b0b0;/* Subtext */
+  --accent: #ffb86c;              /* Warm highlight */
+  --success: #2ecc71;             /* Cleaner green */
+  --destructive: #ff4d4d;         /* Calmer red */
+  --border: #333333;
+  --ring: #f7931a;
+}
+
 
 @theme {
   --color-background: var(--background);
@@ -31,17 +59,11 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 @keyframes spin {

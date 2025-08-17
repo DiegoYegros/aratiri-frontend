@@ -1,4 +1,5 @@
 "use client";
+import { useTheme } from "@/app/hooks/useTheme";
 import { Loader } from "lucide-react";
 
 interface SettingsTabProps {
@@ -14,6 +15,8 @@ export const SettingsTab = ({
   availableCurrencies,
   loading,
 }: SettingsTabProps) => {
+  const { theme, setTheme } = useTheme();
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-full">
@@ -28,8 +31,30 @@ export const SettingsTab = ({
       <div className="space-y-6">
         <div className="bg-secondary/50 p-4 rounded-lg">
           <label
+            htmlFor="theme-select"
+            className="block text-sm font-medium text-secondary-foreground mb-2"
+          >
+            Theme
+          </label>
+          <select
+            id="theme-select"
+            value={theme}
+            onChange={(e) => setTheme(e.target.value as any)}
+            className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
+          >
+            <option value="Aratiri">Aratiri</option>
+            <option value="Bitcoin">Bitcoin</option>
+            <option value="Default">Default</option>
+          </select>
+          <p className="text-xs text-secondary-foreground mt-2">
+            Choose a visual theme for the application.
+          </p>
+        </div>
+
+        <div className="bg-secondary/50 p-4 rounded-lg">
+          <label
             htmlFor="currency-select"
-            className="block text-sm font-medium text-gray-400 mb-2"
+            className="block text-sm font-medium text-secondary-foreground mb-2"
           >
             Preferred Currency
           </label>
@@ -37,7 +62,7 @@ export const SettingsTab = ({
             id="currency-select"
             value={selectedCurrency}
             onChange={(e) => setSelectedCurrency(e.target.value)}
-            className="w-full px-4 py-3 bg-background border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
+            className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
           >
             {availableCurrencies.map((currency) => (
               <option key={currency} value={currency}>
@@ -45,7 +70,7 @@ export const SettingsTab = ({
               </option>
             ))}
           </select>
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-secondary-foreground mt-2">
             The selected currency will be used to show equivalent values in the
             application.
           </p>

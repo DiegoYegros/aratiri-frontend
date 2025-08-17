@@ -124,7 +124,7 @@ export const TransactionsTab = ({
         <div className="text-center mt-4">
           <button
             onClick={() => setShowAll(true)}
-            className="text-primary hover:text-accent"
+            className="text-primary hover:text-primary/80"
           >
             See more
           </button>

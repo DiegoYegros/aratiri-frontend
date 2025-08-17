@@ -202,7 +202,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
             <button
               onClick={handlePay}
               disabled={loading}
-              className="w-full bg-primary text-primary-foreground font-bold py-3 px-4 rounded-lg hover:bg-accent disabled:opacity-50 transition"
+              className="w-full bg-primary text-primary-foreground font-bold py-3 px-4 rounded-lg hover:bg-primary/80 disabled:opacity-50 transition"
             >
               {loading
                 ? "Paying..."
@@ -237,7 +237,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
                 ).toLocaleString()} - ${(
                   params.maxSendable / 1000
                 ).toLocaleString()} sats)`}
-                className="w-full pl-10 pr-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+                className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
             {params.commentAllowed && params.commentAllowed > 0 && (
@@ -253,14 +253,14 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
                   onKeyDown={handleKeyDown}
                   placeholder={`Comment (optional, max ${params.commentAllowed} chars)`}
                   maxLength={params.commentAllowed}
-                  className="w-full pl-10 pr-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
             )}
             <button
               onClick={handlePay}
               disabled={loading || !lnurlAmount}
-              className="w-full bg-primary text-primary-foreground font-bold py-3 px-4 rounded-lg hover:bg-accent disabled:opacity-50 transition"
+              className="w-full bg-primary text-primary-foreground font-bold py-3 px-4 rounded-lg hover:bg-primary/80 disabled:opacity-50 transition"
             >
               {loading ? "Processing..." : "Pay"}
             </button>
@@ -281,7 +281,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
                 onChange={(e) => setOnChainAmount(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Amount (sats)"
-                className="w-full pl-10 pr-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+                className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 disabled={showFee}
               />
             </div>
@@ -296,7 +296,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
                 <button
                   onClick={handlePay}
                   disabled={loading}
-                  className="w-full mt-4 bg-primary text-primary-foreground font-bold py-3 px-4 rounded-lg hover:bg-accent disabled:opacity-50 transition"
+                  className="w-full mt-4 bg-primary text-primary-foreground font-bold py-3 px-4 rounded-lg hover:bg-primary/80 disabled:opacity-50 transition"
                 >
                   {loading ? "Sending..." : "Confirm and Send"}
                 </button>
@@ -305,7 +305,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
               <button
                 onClick={handleEstimateFee}
                 disabled={loading || !onChainAmount}
-                className="w-full bg-primary text-primary-foreground font-bold py-3 px-4 rounded-lg hover:bg-accent disabled:opacity-50 transition"
+                className="w-full bg-primary text-primary-foreground font-bold py-3 px-4 rounded-lg hover:bg-primary/80 disabled:opacity-50 transition"
               >
                 {loading ? "Estimating Fee..." : "Continue"}
               </button>
@@ -329,12 +329,12 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 animate-fade-in">
-      <div className="bg-secondary p-6 rounded-2xl w-full max-w-md m-4 border border-border/20">
+      <div className="bg-secondary p-6 rounded-2xl w-full max-w-md m-4 border border-border">
         <div className="flex justify-between items-center mb-6">
           {decoded ? (
             <button
               onClick={handleBack}
-              className="p-2 text-gray-400 hover:text-white"
+              className="p-2 text-secondary-foreground hover:text-foreground"
             >
               <ArrowLeft />
             </button>
@@ -346,7 +346,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
           </h2>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-white"
+            className="p-2 text-secondary-foreground hover:text-foreground"
           >
             <X />
           </button>
@@ -359,19 +359,19 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Paste Invoice, LNURL, Address, or Alias"
-              className="w-full h-32 px-4 py-3 bg-background border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
+              className="w-full h-32 px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
             />
             <div className="flex space-x-2">
               <button
                 onClick={() => handleDecode(inputValue)}
                 disabled={loading || !inputValue}
-                className="flex-grow bg-zinc-700 text-white font-bold py-3 px-4 rounded-lg hover:bg-zinc-600 disabled:opacity-50 transition"
+                className="flex-grow bg-accent text-white font-bold py-3 px-4 rounded-lg hover:bg-accent/80 disabled:opacity-50 transition"
               >
                 {loading ? "Decoding..." : "Decode"}
               </button>
               <button
                 onClick={() => setIsScanning(true)}
-                className="bg-zinc-700 text-white p-3 rounded-lg hover:bg-zinc-600 disabled:opacity-50 transition"
+                className="bg-accent text-white p-3 rounded-lg hover:bg-accent/80 disabled:opacity-50 transition"
                 title="Scan QR Code"
               >
                 <QrCode />

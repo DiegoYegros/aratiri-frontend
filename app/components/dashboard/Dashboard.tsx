@@ -300,7 +300,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
       )}
       {isSettingsModalOpen && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 animate-fade-in">
-          <div className="bg-secondary p-6 rounded-2xl w-full max-w-md m-4 border border-border/20 relative">
+          <div className="bg-secondary p-6 rounded-2xl w-full max-w-md m-4 border border-border relative">
             <button
               onClick={() => setIsSettingsModalOpen(false)}
               className="absolute top-2 right-2 p-2 text-gray-400 hover:text-white"
@@ -329,7 +329,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
       </div>
 
       {/* Header */}
-      <header className="bg-secondary/50 backdrop-blur-sm border-b border-border/20 sticky top-0 z-10">
+      <header className="bg-secondary/50 backdrop-blur-sm border-b border-border sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div
@@ -394,14 +394,14 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
         <div className="grid grid-cols-2 gap-4 mb-8">
           <button
             onClick={() => setIsReceiveModalOpen(true)}
-            className="bg-success/20 text-success font-bold py-4 px-4 rounded-lg hover:bg-success/30 transition flex items-center justify-center space-x-2 text-lg"
+            className="bg-success text-white font-bold py-4 px-4 rounded-lg hover:bg-success/80 transition flex items-center justify-center space-x-2 text-lg"
           >
             <ArrowLeft />
             <span>Receive</span>
           </button>
           <button
             onClick={() => setIsSendModalOpen(true)}
-            className="bg-primary/20 text-primary font-bold py-4 px-4 rounded-lg hover:bg-primary/30 transition flex items-center justify-center space-x-2 text-lg"
+            className="bg-primary text-primary-foreground font-bold py-4 px-4 rounded-lg hover:bg-primary/80 transition flex items-center justify-center space-x-2 text-lg"
           >
             <span>Send</span>
             <ArrowRight />
