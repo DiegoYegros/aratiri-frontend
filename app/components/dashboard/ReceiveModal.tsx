@@ -1,6 +1,6 @@
 "use client";
 import { Bitcoin, Check, ClipboardCopy, Edit, Share2, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Account, apiCall } from "../../lib/api";
 
 interface ReceiveModalProps {
@@ -18,6 +18,18 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState("lightning");
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
 
   const handleGenerate = async () => {
     setLoading(true);

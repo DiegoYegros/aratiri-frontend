@@ -1,6 +1,6 @@
 "use client";
 import { ArrowLeft, Bitcoin, Edit, QrCode, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   apiCall,
   DecodedInvoice,
@@ -27,6 +27,33 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
   const [onChainAmount, setOnChainAmount] = useState("");
   const [fee, setFee] = useState<EstimateFeeResponse | null>(null);
   const [showFee, setShowFee] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  const handleKeyDown = (
+    event: React.KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>
+  ) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      if (!decoded) {
+        handleDecode(inputValue);
+      } else if (decoded.type === "bitcoin_address" && !showFee) {
+        handleEstimateFee();
+      } else {
+        handlePay();
+      }
+    }
+  };
 
   const handleDecode = async (valueToDecode: string) => {
     if (!valueToDecode) return;
@@ -204,6 +231,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
                 type="number"
                 value={lnurlAmount}
                 onChange={(e) => setLnurlAmount(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder={`Amount (${(
                   params.minSendable / 1000
                 ).toLocaleString()} - ${(
@@ -222,6 +250,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
                   type="text"
                   value={lnurlComment}
                   onChange={(e) => setLnurlComment(e.target.value)}
+                  onKeyDown={handleKeyDown}
                   placeholder={`Comment (optional, max ${params.commentAllowed} chars)`}
                   maxLength={params.commentAllowed}
                   className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
@@ -250,6 +279,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
                 type="number"
                 value={onChainAmount}
                 onChange={(e) => setOnChainAmount(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="Amount (sats)"
                 className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
                 disabled={showFee}
@@ -327,6 +357,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
             <textarea
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder="Paste Invoice, LNURL, Address, or Alias"
               className="w-full h-32 px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 font-mono text-sm"
             />

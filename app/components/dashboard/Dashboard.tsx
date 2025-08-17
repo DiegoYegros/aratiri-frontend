@@ -66,6 +66,20 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
     }
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        if (isSettingsModalOpen) {
+          setIsSettingsModalOpen(false);
+        }
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isSettingsModalOpen]);
+
   const handleRefresh = async () => {
     if (isRefreshing) return;
 
