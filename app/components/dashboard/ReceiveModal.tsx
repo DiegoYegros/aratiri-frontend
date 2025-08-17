@@ -94,7 +94,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
           {invoice && activeTab === "request" ? (
             <button
               onClick={handleBackToRequest}
-              className="p-2 text-gray-400 hover:text-white rounded-full"
+              className="p-2 text-secondary-foreground hover:text-foreground rounded-full"
             >
               <ArrowLeft size={20} />
             </button>
@@ -104,19 +104,19 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
           <h2 className="text-xl font-bold">Receive</h2>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-white rounded-full"
+            className="p-2 text-secondary-foreground hover:text-foreground rounded-full"
           >
             <X size={20} />
           </button>
         </div>
 
-        <div className="flex p-2 bg-zinc-800/50">
+        <div className="flex p-2 bg-background/50">
           <button
             onClick={() => setActiveTab("lightning")}
             className={`w-1/3 py-2 text-sm font-semibold rounded-md transition-colors ${
               activeTab === "lightning"
                 ? "bg-zinc-700 text-white"
-                : "text-gray-400 hover:bg-zinc-800"
+                : "text-secondary-foreground hover:bg-zinc-800"
             }`}
           >
             Lightning
@@ -126,7 +126,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
             className={`w-1/3 py-2 text-sm font-semibold rounded-md transition-colors ${
               activeTab === "bitcoin"
                 ? "bg-zinc-700 text-white"
-                : "text-gray-400 hover:bg-zinc-800"
+                : "text-secondary-foreground hover:bg-zinc-800"
             }`}
           >
             Bitcoin
@@ -136,7 +136,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
             className={`w-1/3 py-2 text-sm font-semibold rounded-md transition-colors ${
               activeTab === "request"
                 ? "bg-zinc-700 text-white"
-                : "text-gray-400 hover:bg-zinc-800"
+                : "text-secondary-foreground hover:bg-zinc-800"
             }`}
           >
             Request Amount
@@ -154,14 +154,16 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                 />
               </div>
               <div className="mt-4">
-                <p className="text-gray-400 text-sm mb-2">Lightning Address</p>
-                <div className="bg-zinc-800 rounded-lg px-4 py-3 flex items-center justify-between">
+                <p className="text-secondary-foreground text-sm mb-2">
+                  Lightning Address
+                </p>
+                <div className="bg-background rounded-lg px-4 py-3 flex items-center justify-between">
                   <span className="font-mono text-sm truncate">
                     {account?.alias}
                   </span>
                   <button
                     onClick={() => copyToClipboard(account?.lnurl || "")}
-                    className="p-2 text-gray-400 hover:text-white rounded-full"
+                    className="p-2 text-secondary-foreground hover:text-foreground rounded-full"
                     title="Copy LNURL"
                   >
                     {copied ? (
@@ -199,8 +201,10 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                 />
               </div>
               <div className="mt-4">
-                <p className="text-gray-400 text-sm mb-2">Bitcoin Address</p>
-                <div className="bg-zinc-800 rounded-lg px-4 py-3 flex items-center justify-between">
+                <p className="text-secondary-foreground text-sm mb-2">
+                  Bitcoin Address
+                </p>
+                <div className="bg-background rounded-lg px-4 py-3 flex items-center justify-between">
                   <span className="font-mono text-sm break-all">
                     {account?.bitcoin_address}
                   </span>
@@ -208,7 +212,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                     onClick={() =>
                       copyToClipboard(account?.bitcoin_address || "")
                     }
-                    className="p-2 text-gray-400 hover:text-white rounded-full"
+                    className="p-2 text-secondary-foreground hover:text-foreground rounded-full"
                     title="Copy Bitcoin Address"
                   >
                     {copied ? (
@@ -239,7 +243,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
           {activeTab === "request" && (
             <div>
               {invoice ? (
-                <div className="mt-4 p-4 bg-zinc-800 rounded-lg">
+                <div className="mt-4 p-4 bg-background rounded-lg">
                   <div className="text-center">
                     <div className="bg-white p-4 rounded-lg inline-block">
                       <img
@@ -255,7 +259,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                     </span>
                     <button
                       onClick={() => copyToClipboard(invoice.payment_request)}
-                      className="p-2 text-gray-400 hover:text-white rounded-full"
+                      className="p-2 text-secondary-foreground hover:text-foreground rounded-full"
                     >
                       {copied ? (
                         <Check size={18} className="text-success" />
@@ -269,7 +273,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                 <div className="space-y-4">
                   <div className="relative">
                     <Bitcoin
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-foreground"
                       size={20}
                     />
                     <input
@@ -277,12 +281,12 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
                       placeholder="Amount (sats)"
-                      className="w-full pl-10 pr-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+                      className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
                   <div className="relative">
                     <Edit
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-foreground"
                       size={20}
                     />
                     <input
@@ -290,7 +294,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                       value={memo}
                       onChange={(e) => setMemo(e.target.value)}
                       placeholder="Memo (optional)"
-                      className="w-full pl-10 pr-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+                      className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
                   <button

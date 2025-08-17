@@ -84,19 +84,19 @@ export const QrScanner = ({ onScanSuccess, onClose }: QrScannerProps) => {
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-      <div className="bg-gray-800 p-4 rounded-lg relative w-full max-w-md">
+      <div className="bg-secondary p-4 rounded-lg relative w-full max-w-md">
         <h3 className="text-center text-lg mb-2">Scan QR Code</h3>
         <button
           onClick={onClose}
-          className="absolute top-2 right-2 p-2 text-gray-400 hover:text-white"
+          className="absolute top-2 right-2 p-2 text-secondary-foreground hover:text-foreground"
         >
           <X />
         </button>
-        <div className="w-full aspect-square bg-gray-900 rounded-md overflow-hidden">
+        <div className="w-full aspect-square bg-background rounded-md overflow-hidden">
           <video ref={videoRef} className="w-full h-full object-cover"></video>
           <canvas ref={canvasRef} className="hidden" />
         </div>
-        {error && <p className="text-red-400 mt-2 text-center">{error}</p>}
+        {error && <p className="text-destructive mt-2 text-center">{error}</p>}
       </div>
     </div>
   );

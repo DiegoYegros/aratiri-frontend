@@ -70,7 +70,7 @@ export const RegisterScreen = ({
           onClick={() =>
             isVerification ? setIsVerification(false) : setShowRegister(false)
           }
-          className="absolute top-4 left-4 p-2 text-gray-400 hover:text-white"
+          className="absolute top-4 left-4 p-2 text-secondary-foreground hover:text-foreground"
         >
           <ArrowLeft />
         </button>
@@ -78,7 +78,7 @@ export const RegisterScreen = ({
         <div className="text-center">
           <Zap className="w-16 h-16 text-primary mx-auto mb-4 animate-pulse" />
           <h1 className="text-4xl font-bold">Aratiri</h1>
-          <p className="text-gray-400">
+          <p className="text-secondary-foreground">
             {isVerification
               ? "Enter verification code"
               : "Create a new account"}
@@ -86,7 +86,7 @@ export const RegisterScreen = ({
         </div>
 
         {error && (
-          <div className="bg-primary/20 border border-primary text-primary-foreground px-4 py-3 rounded-lg text-center">
+          <div className="bg-destructive/20 border border-destructive text-destructive-foreground px-4 py-3 rounded-lg text-center">
             {error}
           </div>
         )}
@@ -98,7 +98,7 @@ export const RegisterScreen = ({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Name"
-              className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
+              className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
               required
             />
             <input
@@ -106,7 +106,7 @@ export const RegisterScreen = ({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email"
-              className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
+              className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
               required
             />
             <input
@@ -114,7 +114,7 @@ export const RegisterScreen = ({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
+              className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
               required
             />
             <input
@@ -122,7 +122,7 @@ export const RegisterScreen = ({
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Confirm Password"
-              className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
+              className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
               required
             />
             <input
@@ -130,7 +130,7 @@ export const RegisterScreen = ({
               value={alias}
               onChange={(e) => setAlias(e.target.value)}
               placeholder="Alias"
-              className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
+              className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
               required
             />
             <button
@@ -148,7 +148,7 @@ export const RegisterScreen = ({
               value={code}
               onChange={(e) => setCode(e.target.value)}
               placeholder="Verification Code"
-              className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
+              className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
               required
             />
             <button

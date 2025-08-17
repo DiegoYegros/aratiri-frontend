@@ -78,11 +78,11 @@ export const LoginScreen = ({
         <div className="text-center">
           <Zap className="w-16 h-16 text-primary mx-auto mb-4 animate-pulse" />
           <h1 className="text-4xl font-bold">Aratiri</h1>
-          <p className="text-gray-400">Bitcoin Lightning Wallet</p>
+          <p className="text-secondary-foreground">Bitcoin Lightning Wallet</p>
         </div>
 
         {error && (
-          <div className="bg-primary/20 border border-primary text-primary-foreground px-4 py-3 rounded-lg text-center">
+          <div className="bg-destructive/20 border border-destructive text-destructive px-4 py-3 rounded-lg text-center">
             {error}
           </div>
         )}
@@ -93,7 +93,7 @@ export const LoginScreen = ({
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="Username"
-            className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
+            className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
             required
           />
           <input
@@ -101,7 +101,7 @@ export const LoginScreen = ({
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
-            className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
+            className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
             required
           />
           <div className="text-right">
@@ -124,10 +124,12 @@ export const LoginScreen = ({
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-zinc-700" />
+            <div className="w-full border-t border-border" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="bg-secondary px-2 text-gray-500">OR</span>
+            <span className="bg-secondary px-2 text-secondary-foreground">
+              OR
+            </span>
           </div>
         </div>
 
@@ -143,7 +145,7 @@ export const LoginScreen = ({
             Create new account
           </button>
         </div>
-        <div className="absolute bottom-4 right-4 text-xs text-gray-500">
+        <div className="absolute bottom-4 right-4 text-xs text-secondary-foreground">
           v0.1.0
         </div>
       </div>
