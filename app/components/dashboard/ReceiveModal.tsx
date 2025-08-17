@@ -89,8 +89,8 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 animate-fade-in">
-      <div className="bg-gray-900 rounded-2xl w-full max-w-md m-4 border border-slate-700/50 flex flex-col max-h-[90vh]">
-        <div className="flex justify-between items-center p-4 border-b border-slate-800">
+      <div className="bg-secondary rounded-2xl w-full max-w-md m-4 border border-border/50 flex flex-col max-h-[90vh]">
+        <div className="flex justify-between items-center p-4 border-b border-border/50">
           {invoice && activeTab === "request" ? (
             <button
               onClick={handleBackToRequest}
@@ -110,13 +110,13 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
           </button>
         </div>
 
-        <div className="flex p-2 bg-gray-800/50">
+        <div className="flex p-2 bg-zinc-800/50">
           <button
             onClick={() => setActiveTab("lightning")}
             className={`w-1/3 py-2 text-sm font-semibold rounded-md transition-colors ${
               activeTab === "lightning"
-                ? "bg-slate-700 text-white"
-                : "text-gray-400 hover:bg-slate-800"
+                ? "bg-zinc-700 text-white"
+                : "text-gray-400 hover:bg-zinc-800"
             }`}
           >
             Lightning
@@ -125,8 +125,8 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
             onClick={() => setActiveTab("bitcoin")}
             className={`w-1/3 py-2 text-sm font-semibold rounded-md transition-colors ${
               activeTab === "bitcoin"
-                ? "bg-slate-700 text-white"
-                : "text-gray-400 hover:bg-slate-800"
+                ? "bg-zinc-700 text-white"
+                : "text-gray-400 hover:bg-zinc-800"
             }`}
           >
             Bitcoin
@@ -135,8 +135,8 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
             onClick={() => setActiveTab("request")}
             className={`w-1/3 py-2 text-sm font-semibold rounded-md transition-colors ${
               activeTab === "request"
-                ? "bg-slate-700 text-white"
-                : "text-gray-400 hover:bg-slate-800"
+                ? "bg-zinc-700 text-white"
+                : "text-gray-400 hover:bg-zinc-800"
             }`}
           >
             Request Amount
@@ -155,7 +155,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
               </div>
               <div className="mt-4">
                 <p className="text-gray-400 text-sm mb-2">Lightning Address</p>
-                <div className="bg-gray-800 rounded-lg px-4 py-3 flex items-center justify-between">
+                <div className="bg-zinc-800 rounded-lg px-4 py-3 flex items-center justify-between">
                   <span className="font-mono text-sm truncate">
                     {account?.alias}
                   </span>
@@ -165,7 +165,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                     title="Copy LNURL"
                   >
                     {copied ? (
-                      <Check size={18} className="text-green-500" />
+                      <Check size={18} className="text-success" />
                     ) : (
                       <ClipboardCopy size={18} />
                     )}
@@ -180,7 +180,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                       `You can send me Bitcoin on the Lightning Network using this address: ${account?.alias}`
                     )
                   }
-                  className="mt-6 w-full bg-slate-700 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-600 transition flex items-center justify-center"
+                  className="mt-6 w-full bg-zinc-700 text-white font-bold py-3 px-4 rounded-lg hover:bg-zinc-600 transition flex items-center justify-center"
                 >
                   <Share2 size={18} className="mr-2" />
                   Share
@@ -200,7 +200,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
               </div>
               <div className="mt-4">
                 <p className="text-gray-400 text-sm mb-2">Bitcoin Address</p>
-                <div className="bg-gray-800 rounded-lg px-4 py-3 flex items-center justify-between">
+                <div className="bg-zinc-800 rounded-lg px-4 py-3 flex items-center justify-between">
                   <span className="font-mono text-sm break-all">
                     {account?.bitcoin_address}
                   </span>
@@ -212,7 +212,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                     title="Copy Bitcoin Address"
                   >
                     {copied ? (
-                      <Check size={18} className="text-green-500" />
+                      <Check size={18} className="text-success" />
                     ) : (
                       <ClipboardCopy size={18} />
                     )}
@@ -227,7 +227,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                       `You can send me Bitcoin On Chain using this address: ${account?.bitcoin_address}`
                     )
                   }
-                  className="mt-6 w-full bg-slate-700 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-600 transition flex items-center justify-center"
+                  className="mt-6 w-full bg-zinc-700 text-white font-bold py-3 px-4 rounded-lg hover:bg-zinc-600 transition flex items-center justify-center"
                 >
                   <Share2 size={18} className="mr-2" />
                   Share
@@ -239,7 +239,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
           {activeTab === "request" && (
             <div>
               {invoice ? (
-                <div className="mt-4 p-4 bg-gray-800 rounded-lg">
+                <div className="mt-4 p-4 bg-zinc-800 rounded-lg">
                   <div className="text-center">
                     <div className="bg-white p-4 rounded-lg inline-block">
                       <img
@@ -249,7 +249,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                       />
                     </div>
                   </div>
-                  <div className="mt-4 bg-gray-900 rounded-lg px-4 py-3 flex items-center justify-between">
+                  <div className="mt-4 bg-zinc-900 rounded-lg px-4 py-3 flex items-center justify-between">
                     <span className="font-mono text-xs break-all">
                       {invoice.payment_request}
                     </span>
@@ -258,7 +258,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                       className="p-2 text-gray-400 hover:text-white rounded-full"
                     >
                       {copied ? (
-                        <Check size={18} className="text-green-500" />
+                        <Check size={18} className="text-success" />
                       ) : (
                         <ClipboardCopy size={18} />
                       )}
@@ -277,7 +277,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
                       placeholder="Amount (sats)"
-                      className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+                      className="w-full pl-10 pr-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
                     />
                   </div>
                   <div className="relative">
@@ -290,18 +290,18 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                       value={memo}
                       onChange={(e) => setMemo(e.target.value)}
                       placeholder="Memo (optional)"
-                      className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+                      className="w-full pl-10 pr-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
                     />
                   </div>
                   <button
                     onClick={handleGenerate}
                     disabled={loading || !amount}
-                    className="w-full bg-slate-700 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-600 disabled:opacity-50 transition"
+                    className="w-full bg-zinc-700 text-white font-bold py-3 px-4 rounded-lg hover:bg-zinc-600 disabled:opacity-50 transition"
                   >
                     {loading ? "Generating..." : "Generate Invoice"}
                   </button>
                   {error && (
-                    <div className="text-red-400 text-center text-sm mt-2">
+                    <div className="text-destructive text-center text-sm mt-2">
                       {error}
                     </div>
                   )}

@@ -64,8 +64,8 @@ export const RegisterScreen = ({
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4 font-sans">
-      <div className="relative w-full max-w-md bg-gray-800 rounded-2xl shadow-lg p-8 space-y-6 border border-yellow-500/20">
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4 font-sans">
+      <div className="relative w-full max-w-md bg-secondary rounded-2xl shadow-lg p-8 space-y-6 border border-border/20">
         <button
           onClick={() =>
             isVerification ? setIsVerification(false) : setShowRegister(false)
@@ -76,7 +76,7 @@ export const RegisterScreen = ({
         </button>
 
         <div className="text-center">
-          <Zap className="w-16 h-16 text-yellow-400 mx-auto mb-4 animate-pulse" />
+          <Zap className="w-16 h-16 text-primary mx-auto mb-4 animate-pulse" />
           <h1 className="text-4xl font-bold">Aratiri</h1>
           <p className="text-gray-400">
             {isVerification
@@ -86,7 +86,7 @@ export const RegisterScreen = ({
         </div>
 
         {error && (
-          <div className="bg-yellow-500/20 border border-yellow-500 text-yellow-300 px-4 py-3 rounded-lg text-center">
+          <div className="bg-primary/20 border border-primary text-primary-foreground px-4 py-3 rounded-lg text-center">
             {error}
           </div>
         )}
@@ -98,7 +98,7 @@ export const RegisterScreen = ({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Name"
-              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
+              className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
               required
             />
             <input
@@ -106,7 +106,7 @@ export const RegisterScreen = ({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email"
-              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
+              className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
               required
             />
             <input
@@ -114,7 +114,7 @@ export const RegisterScreen = ({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
+              className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
               required
             />
             <input
@@ -122,7 +122,7 @@ export const RegisterScreen = ({
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Confirm Password"
-              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
+              className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
               required
             />
             <input
@@ -130,13 +130,13 @@ export const RegisterScreen = ({
               value={alias}
               onChange={(e) => setAlias(e.target.value)}
               placeholder="Alias"
-              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
+              className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
               required
             />
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50 transition"
+              className="w-full bg-primary text-primary-foreground font-bold py-3 px-4 rounded-lg hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-secondary disabled:opacity-50 transition"
             >
               {loading ? "Registering..." : "Register"}
             </button>
@@ -148,13 +148,13 @@ export const RegisterScreen = ({
               value={code}
               onChange={(e) => setCode(e.target.value)}
               placeholder="Verification Code"
-              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
+              className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
               required
             />
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50 transition"
+              className="w-full bg-primary text-primary-foreground font-bold py-3 px-4 rounded-lg hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-secondary disabled:opacity-50 transition"
             >
               {loading ? "Verifying..." : "Verify"}
             </button>

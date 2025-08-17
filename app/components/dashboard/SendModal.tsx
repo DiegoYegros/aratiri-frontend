@@ -189,7 +189,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
       case "lightning_invoice":
         const invoice = decoded.data as DecodedInvoice;
         return (
-          <div className="mt-6 bg-gray-900/50 p-4 rounded-lg space-y-3 animate-fade-in">
+          <div className="mt-6 bg-secondary/50 p-4 rounded-lg space-y-3 animate-fade-in">
             <h3 className="font-bold text-lg">Invoice Details</h3>
             <div>
               <span className="font-semibold text-gray-400">Amount:</span>{" "}
@@ -202,7 +202,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
             <button
               onClick={handlePay}
               disabled={loading}
-              className="w-full bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 disabled:opacity-50 transition"
+              className="w-full bg-primary text-primary-foreground font-bold py-3 px-4 rounded-lg hover:bg-accent disabled:opacity-50 transition"
             >
               {loading
                 ? "Paying..."
@@ -220,7 +220,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
           "LNURL Payment";
 
         return (
-          <div className="mt-6 bg-gray-900/50 p-4 rounded-lg space-y-4 animate-fade-in">
+          <div className="mt-6 bg-secondary/50 p-4 rounded-lg space-y-4 animate-fade-in">
             <h3 className="font-bold text-lg">{description}</h3>
             <div className="relative">
               <Bitcoin
@@ -237,7 +237,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
                 ).toLocaleString()} - ${(
                   params.maxSendable / 1000
                 ).toLocaleString()} sats)`}
-                className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+                className="w-full pl-10 pr-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
               />
             </div>
             {params.commentAllowed && params.commentAllowed > 0 && (
@@ -253,14 +253,14 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
                   onKeyDown={handleKeyDown}
                   placeholder={`Comment (optional, max ${params.commentAllowed} chars)`}
                   maxLength={params.commentAllowed}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  className="w-full pl-10 pr-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
                 />
               </div>
             )}
             <button
               onClick={handlePay}
               disabled={loading || !lnurlAmount}
-              className="w-full bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 disabled:opacity-50 transition"
+              className="w-full bg-primary text-primary-foreground font-bold py-3 px-4 rounded-lg hover:bg-accent disabled:opacity-50 transition"
             >
               {loading ? "Processing..." : "Pay"}
             </button>
@@ -269,7 +269,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
 
       case "bitcoin_address":
         return (
-          <div className="mt-6 bg-gray-900/50 p-4 rounded-lg space-y-4 animate-fade-in">
+          <div className="mt-6 bg-secondary/50 p-4 rounded-lg space-y-4 animate-fade-in">
             <div className="relative">
               <Bitcoin
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -281,7 +281,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
                 onChange={(e) => setOnChainAmount(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Amount (sats)"
-                className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+                className="w-full pl-10 pr-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
                 disabled={showFee}
               />
             </div>
@@ -296,7 +296,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
                 <button
                   onClick={handlePay}
                   disabled={loading}
-                  className="w-full mt-4 bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 disabled:opacity-50 transition"
+                  className="w-full mt-4 bg-primary text-primary-foreground font-bold py-3 px-4 rounded-lg hover:bg-accent disabled:opacity-50 transition"
                 >
                   {loading ? "Sending..." : "Confirm and Send"}
                 </button>
@@ -305,7 +305,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
               <button
                 onClick={handleEstimateFee}
                 disabled={loading || !onChainAmount}
-                className="w-full bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 disabled:opacity-50 transition"
+                className="w-full bg-primary text-primary-foreground font-bold py-3 px-4 rounded-lg hover:bg-accent disabled:opacity-50 transition"
               >
                 {loading ? "Estimating Fee..." : "Continue"}
               </button>
@@ -329,7 +329,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 animate-fade-in">
-      <div className="bg-gray-800 p-6 rounded-2xl w-full max-w-md m-4 border border-yellow-500/20">
+      <div className="bg-secondary p-6 rounded-2xl w-full max-w-md m-4 border border-border/20">
         <div className="flex justify-between items-center mb-6">
           {decoded ? (
             <button
@@ -359,19 +359,19 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Paste Invoice, LNURL, Address, or Alias"
-              className="w-full h-32 px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 font-mono text-sm"
+              className="w-full h-32 px-4 py-3 bg-background border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
             />
             <div className="flex space-x-2">
               <button
                 onClick={() => handleDecode(inputValue)}
                 disabled={loading || !inputValue}
-                className="flex-grow bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-500 disabled:opacity-50 transition"
+                className="flex-grow bg-zinc-700 text-white font-bold py-3 px-4 rounded-lg hover:bg-zinc-600 disabled:opacity-50 transition"
               >
                 {loading ? "Decoding..." : "Decode"}
               </button>
               <button
                 onClick={() => setIsScanning(true)}
-                className="bg-gray-600 text-white p-3 rounded-lg hover:bg-gray-500 disabled:opacity-50 transition"
+                className="bg-zinc-700 text-white p-3 rounded-lg hover:bg-zinc-600 disabled:opacity-50 transition"
                 title="Scan QR Code"
               >
                 <QrCode />
@@ -380,9 +380,11 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
           </div>
         )}
 
-        {error && <div className="text-red-400 text-center mt-4">{error}</div>}
+        {error && (
+          <div className="text-destructive text-center mt-4">{error}</div>
+        )}
         {success && (
-          <div className="text-green-400 text-center mt-4">{success}</div>
+          <div className="text-success text-center mt-4">{success}</div>
         )}
 
         {renderDecodedContent()}

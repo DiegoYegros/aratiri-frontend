@@ -17,10 +17,11 @@ export const NotificationToast = ({
     }, 5000);
     return () => clearTimeout(timer);
   }, [notification.id, onClose]);
+
   const isSuccess = notification.type === "success";
   const bgColor = isSuccess ? "bg-green-500/20" : "bg-red-500/20";
-  const borderColor = isSuccess ? "border-green-400" : "border-red-400";
-  const iconColor = isSuccess ? "text-green-400" : "text-red-400";
+  const borderColor = isSuccess ? "border-success" : "border-destructive";
+  const iconColor = isSuccess ? "text-success" : "text-destructive";
   const Icon = isSuccess ? Zap : X;
 
   return (

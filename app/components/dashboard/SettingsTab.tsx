@@ -17,7 +17,7 @@ export const SettingsTab = ({
   if (loading) {
     return (
       <div className="flex justify-center items-center h-full">
-        <Loader className="animate-spin text-yellow-400" />
+        <Loader className="animate-spin text-primary" />
       </div>
     );
   }
@@ -26,7 +26,7 @@ export const SettingsTab = ({
     <div>
       <h2 className="text-2xl font-bold mb-6">Settings</h2>
       <div className="space-y-6">
-        <div className="bg-gray-700/50 p-4 rounded-lg">
+        <div className="bg-secondary/50 p-4 rounded-lg">
           <label
             htmlFor="currency-select"
             className="block text-sm font-medium text-gray-400 mb-2"
@@ -37,7 +37,7 @@ export const SettingsTab = ({
             id="currency-select"
             value={selectedCurrency}
             onChange={(e) => setSelectedCurrency(e.target.value)}
-            className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
+            className="w-full px-4 py-3 bg-background border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition"
           >
             {availableCurrencies.map((currency) => (
               <option key={currency} value={currency}>

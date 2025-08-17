@@ -273,15 +273,15 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
-        <Zap className="w-16 h-16 text-yellow-400 animate-spin" />
+      <div className="min-h-screen bg-background flex items-center justify-center text-foreground">
+        <Zap className="w-16 h-16 text-primary animate-spin" />
       </div>
     );
   }
 
   const isBalanceVisible = isClient && balanceVisible;
   return (
-    <div className="min-h-screen bg-gray-900 text-white font-sans flex flex-col">
+    <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
       {/* Modals */}
       {isSendModalOpen && (
         <SendModal
@@ -300,7 +300,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
       )}
       {isSettingsModalOpen && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 animate-fade-in">
-          <div className="bg-gray-800 p-6 rounded-2xl w-full max-w-md m-4 border border-yellow-500/20 relative">
+          <div className="bg-secondary p-6 rounded-2xl w-full max-w-md m-4 border border-border/20 relative">
             <button
               onClick={() => setIsSettingsModalOpen(false)}
               className="absolute top-2 right-2 p-2 text-gray-400 hover:text-white"
@@ -329,7 +329,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
       </div>
 
       {/* Header */}
-      <header className="bg-gray-800/50 backdrop-blur-sm border-b border-yellow-500/20 sticky top-0 z-10">
+      <header className="bg-secondary/50 backdrop-blur-sm border-b border-border/20 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div
@@ -337,7 +337,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
               onClick={handleRefresh}
             >
               <Zap
-                className={`w-8 h-8 text-yellow-400 ${
+                className={`w-8 h-8 text-primary ${
                   isRefreshing ? "animate-spin-smooth" : ""
                 }`}
               />
@@ -364,7 +364,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
       {/* Main Content */}
       <main className="flex-grow max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {error && (
-          <div className="bg-red-500/20 border border-red-500 text-red-300 px-4 py-3 rounded-lg mb-6">
+          <div className="bg-destructive/20 border border-destructive text-destructive-foreground px-4 py-3 rounded-lg mb-6">
             {error}
           </div>
         )}
@@ -394,14 +394,14 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
         <div className="grid grid-cols-2 gap-4 mb-8">
           <button
             onClick={() => setIsReceiveModalOpen(true)}
-            className="bg-green-500/20 text-green-300 font-bold py-4 px-4 rounded-lg hover:bg-green-500/30 transition flex items-center justify-center space-x-2 text-lg"
+            className="bg-success/20 text-success font-bold py-4 px-4 rounded-lg hover:bg-success/30 transition flex items-center justify-center space-x-2 text-lg"
           >
             <ArrowLeft />
             <span>Receive</span>
           </button>
           <button
             onClick={() => setIsSendModalOpen(true)}
-            className="bg-yellow-400/20 text-yellow-300 font-bold py-4 px-4 rounded-lg hover:bg-yellow-400/30 transition flex items-center justify-center space-x-2 text-lg"
+            className="bg-primary/20 text-primary font-bold py-4 px-4 rounded-lg hover:bg-primary/30 transition flex items-center justify-center space-x-2 text-lg"
           >
             <span>Send</span>
             <ArrowRight />

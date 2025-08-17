@@ -57,10 +57,10 @@ const getTransactionProperties = (
     color:
       tx.status === "COMPLETED"
         ? isCredit
-          ? "text-green-400"
-          : "text-red-400"
+          ? "text-success"
+          : "text-destructive"
         : tx.status === "PENDING"
-        ? "text-yellow-400"
+        ? "text-primary"
         : "text-gray-400",
     text: textElement,
     statusText: statusText,
@@ -98,7 +98,7 @@ export const TransactionsTab = ({
             return (
               <div
                 key={tx.id}
-                className="bg-gray-700/50 p-4 rounded-lg flex justify-between items-center"
+                className="bg-secondary/50 p-4 rounded-lg flex justify-between items-center"
               >
                 <div
                   className="cursor-pointer"
@@ -124,7 +124,7 @@ export const TransactionsTab = ({
         <div className="text-center mt-4">
           <button
             onClick={() => setShowAll(true)}
-            className="text-yellow-400 hover:text-yellow-300"
+            className="text-primary hover:text-accent"
           >
             See more
           </button>
