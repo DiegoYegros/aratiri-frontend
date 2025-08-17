@@ -1,5 +1,13 @@
 "use client";
-import { Bitcoin, Check, ClipboardCopy, Edit, Share2, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Bitcoin,
+  Check,
+  ClipboardCopy,
+  Edit,
+  Share2,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Account, apiCall } from "../../lib/api";
 
@@ -18,6 +26,13 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState("lightning");
+  const [showShareButton, setShowShareButton] = useState(false);
+
+  useEffect(() => {
+    if (navigator.share) {
+      setShowShareButton(true);
+    }
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -54,50 +69,38 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleLightningShare = async () => {
+  const handleShare = async (title: string, text: string) => {
     const shareData = {
-      title: "My Lightning Address",
-      text: `You can send me Bitcoin on the Lightning Network using this address: ${account?.alias}`,
+      title: title,
+      text: text,
     };
-
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch (err) {
-        console.error("Error sharing:", err);
-      }
-    } else {
-      copyToClipboard(account?.alias || "");
-      alert(
-        "Web Share API not supported in your browser. Username copied to clipboard instead."
-      );
+    try {
+      await navigator.share(shareData);
+    } catch (err) {
+      console.error("Error sharing:", err);
     }
   };
 
-  const handleBitcoinShare = async () => {
-    const shareData = {
-      title: "My Bitcoin Address",
-      text: `You can send me Bitcoin On Chain using this address: ${account?.bitcoin_address}`,
-    };
-
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch (err) {
-        console.error("Error sharing:", err);
-      }
-    } else {
-      copyToClipboard(account?.bitcoin_address || "");
-      alert(
-        "Web Share API not supported in your browser. Address copied to clipboard instead."
-      );
-    }
+  const handleBackToRequest = () => {
+    setInvoice(null);
+    setAmount("");
+    setMemo("");
   };
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 animate-fade-in">
       <div className="bg-gray-900 rounded-2xl w-full max-w-md m-4 border border-slate-700/50 flex flex-col max-h-[90vh]">
         <div className="flex justify-between items-center p-4 border-b border-slate-800">
+          {invoice && activeTab === "request" ? (
+            <button
+              onClick={handleBackToRequest}
+              className="p-2 text-gray-400 hover:text-white rounded-full"
+            >
+              <ArrowLeft size={20} />
+            </button>
+          ) : (
+            <div style={{ width: "2.5rem" }} />
+          )}
           <h2 className="text-xl font-bold">Receive</h2>
           <button
             onClick={onClose}
@@ -169,13 +172,20 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                   </button>
                 </div>
               </div>
-              <button
-                onClick={handleLightningShare}
-                className="mt-6 w-full bg-slate-700 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-600 transition flex items-center justify-center"
-              >
-                <Share2 size={18} className="mr-2" />
-                Share
-              </button>
+              {showShareButton && (
+                <button
+                  onClick={() =>
+                    handleShare(
+                      "My Lightning Address",
+                      `You can send me Bitcoin on the Lightning Network using this address: ${account?.alias}`
+                    )
+                  }
+                  className="mt-6 w-full bg-slate-700 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-600 transition flex items-center justify-center"
+                >
+                  <Share2 size={18} className="mr-2" />
+                  Share
+                </button>
+              )}
             </div>
           )}
 
@@ -209,57 +219,26 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                   </button>
                 </div>
               </div>
-              <button
-                onClick={handleBitcoinShare}
-                className="mt-6 w-full bg-slate-700 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-600 transition flex items-center justify-center"
-              >
-                <Share2 size={18} className="mr-2" />
-                Share
-              </button>
+              {showShareButton && (
+                <button
+                  onClick={() =>
+                    handleShare(
+                      "My Bitcoin Address",
+                      `You can send me Bitcoin On Chain using this address: ${account?.bitcoin_address}`
+                    )
+                  }
+                  className="mt-6 w-full bg-slate-700 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-600 transition flex items-center justify-center"
+                >
+                  <Share2 size={18} className="mr-2" />
+                  Share
+                </button>
+              )}
             </div>
           )}
 
           {activeTab === "request" && (
-            <div className="space-y-4">
-              <div className="relative">
-                <Bitcoin
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                  size={20}
-                />
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="Amount (sats)"
-                  className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
-                />
-              </div>
-              <div className="relative">
-                <Edit
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                  size={20}
-                />
-                <input
-                  type="text"
-                  value={memo}
-                  onChange={(e) => setMemo(e.target.value)}
-                  placeholder="Memo (optional)"
-                  className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
-                />
-              </div>
-              <button
-                onClick={handleGenerate}
-                disabled={loading || !amount}
-                className="w-full bg-slate-700 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-600 disabled:opacity-50 transition"
-              >
-                {loading ? "Generating..." : "Generate Invoice"}
-              </button>
-              {error && (
-                <div className="text-red-400 text-center text-sm mt-2">
-                  {error}
-                </div>
-              )}
-              {invoice && (
+            <div>
+              {invoice ? (
                 <div className="mt-4 p-4 bg-gray-800 rounded-lg">
                   <div className="text-center">
                     <div className="bg-white p-4 rounded-lg inline-block">
@@ -285,6 +264,47 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                       )}
                     </button>
                   </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="relative">
+                    <Bitcoin
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                      size={20}
+                    />
+                    <input
+                      type="number"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      placeholder="Amount (sats)"
+                      className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+                    />
+                  </div>
+                  <div className="relative">
+                    <Edit
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                      size={20}
+                    />
+                    <input
+                      type="text"
+                      value={memo}
+                      onChange={(e) => setMemo(e.target.value)}
+                      placeholder="Memo (optional)"
+                      className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+                    />
+                  </div>
+                  <button
+                    onClick={handleGenerate}
+                    disabled={loading || !amount}
+                    className="w-full bg-slate-700 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-600 disabled:opacity-50 transition"
+                  >
+                    {loading ? "Generating..." : "Generate Invoice"}
+                  </button>
+                  {error && (
+                    <div className="text-red-400 text-center text-sm mt-2">
+                      {error}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
