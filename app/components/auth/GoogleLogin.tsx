@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "@/app/hooks/useTranslation";
 declare global {
   interface Window {
     google: any;
@@ -15,6 +16,7 @@ interface GoogleLoginProps {
 const GoogleLogin = ({ onSuccess, onError }: GoogleLoginProps) => {
   const buttonDiv = useRef<HTMLDivElement>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
+  const t = useTranslation();
 
   useEffect(() => {
     const scriptTag = document.createElement("script");
@@ -52,7 +54,7 @@ const GoogleLogin = ({ onSuccess, onError }: GoogleLoginProps) => {
     if (response.credential) {
       onSuccess(response.credential);
     } else {
-      onError("No se recibió la credencial de Google.");
+      onError(t("Google credential was not received."));
     }
   };
 

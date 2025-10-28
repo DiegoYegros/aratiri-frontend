@@ -2,6 +2,7 @@
 import { ArrowLeft, Zap } from "lucide-react";
 import { useState } from "react";
 import { apiCall } from "../../lib/api";
+import { useTranslation } from "@/app/hooks/useTranslation";
 
 export const RegisterScreen = ({
   setToken,
@@ -21,11 +22,12 @@ export const RegisterScreen = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [isVerification, setIsVerification] = useState(false);
+  const t = useTranslation();
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError(t("Passwords do not match."));
       return;
     }
     setLoading(true);
@@ -80,8 +82,8 @@ export const RegisterScreen = ({
           <h1 className="text-4xl font-bold">Aratiri</h1>
           <p className="text-gray-400">
             {isVerification
-              ? "Enter verification code"
-              : "Create a new account"}
+              ? t("Enter verification code")
+              : t("Create a new account")}
           </p>
         </div>
 
@@ -97,7 +99,7 @@ export const RegisterScreen = ({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Name"
+              placeholder={t("Name")}
               className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
               required
             />
@@ -105,7 +107,7 @@ export const RegisterScreen = ({
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
+              placeholder={t("Email")}
               className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
               required
             />
@@ -113,7 +115,7 @@ export const RegisterScreen = ({
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
+              placeholder={t("Password")}
               className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
               required
             />
@@ -121,7 +123,7 @@ export const RegisterScreen = ({
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm Password"
+              placeholder={t("Confirm Password")}
               className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
               required
             />
@@ -129,7 +131,7 @@ export const RegisterScreen = ({
               type="text"
               value={alias}
               onChange={(e) => setAlias(e.target.value)}
-              placeholder="Alias"
+              placeholder={t("Alias")}
               className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
               required
             />
@@ -138,7 +140,7 @@ export const RegisterScreen = ({
               disabled={loading}
               className="w-full bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50 transition"
             >
-              {loading ? "Registering..." : "Register"}
+              {loading ? t("Registering...") : t("Register")}
             </button>
           </form>
         ) : (
@@ -147,7 +149,7 @@ export const RegisterScreen = ({
               type="text"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="Verification Code"
+              placeholder={t("Verification Code")}
               className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
               required
             />
@@ -156,7 +158,7 @@ export const RegisterScreen = ({
               disabled={loading}
               className="w-full bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50 transition"
             >
-              {loading ? "Verifying..." : "Verify"}
+              {loading ? t("Verifying...") : t("Verify")}
             </button>
           </form>
         )}

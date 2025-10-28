@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Account, apiCall } from "../../lib/api";
+import { useTranslation } from "@/app/hooks/useTranslation";
 
 interface ReceiveModalProps {
   account: Account | null;
@@ -27,6 +28,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState("lightning");
   const [showShareButton, setShowShareButton] = useState(false);
+  const t = useTranslation();
 
   useEffect(() => {
     if (navigator.share) {
@@ -101,7 +103,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
           ) : (
             <div style={{ width: "2.5rem" }} />
           )}
-          <h2 className="text-xl font-bold">Receive</h2>
+          <h2 className="text-xl font-bold">{t("Receive")}</h2>
           <button
             onClick={onClose}
             className="p-2 text-gray-400 hover:text-white rounded-full"
@@ -119,7 +121,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                 : "text-gray-400 hover:bg-slate-800"
             }`}
           >
-            Lightning
+            {t("Lightning")}
           </button>
           <button
             onClick={() => setActiveTab("bitcoin")}
@@ -129,7 +131,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                 : "text-gray-400 hover:bg-slate-800"
             }`}
           >
-            Bitcoin
+            {t("Bitcoin")}
           </button>
           <button
             onClick={() => setActiveTab("request")}
@@ -139,7 +141,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                 : "text-gray-400 hover:bg-slate-800"
             }`}
           >
-            Request Amount
+            {t("Request Amount")}
           </button>
         </div>
 
@@ -154,7 +156,9 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                 />
               </div>
               <div className="mt-4">
-                <p className="text-gray-400 text-sm mb-2">Lightning Address</p>
+                <p className="text-gray-400 text-sm mb-2">
+                  {t("Lightning Address")}
+                </p>
                 <div className="bg-gray-800 rounded-lg px-4 py-3 flex items-center justify-between">
                   <span className="font-mono text-sm truncate">
                     {account?.alias}
@@ -162,7 +166,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                   <button
                     onClick={() => copyToClipboard(account?.lnurl || "")}
                     className="p-2 text-gray-400 hover:text-white rounded-full"
-                    title="Copy LNURL"
+                    title={t("Copy LNURL")}
                   >
                     {copied ? (
                       <Check size={18} className="text-green-500" />
@@ -176,14 +180,17 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                 <button
                   onClick={() =>
                     handleShare(
-                      "My Lightning Address",
-                      `You can send me Bitcoin on the Lightning Network using this address: ${account?.alias}`
+                      t("My Lightning Address"),
+                      t(
+                        "You can send me Bitcoin on the Lightning Network using this address: {address}",
+                        { address: account?.alias || "" }
+                      )
                     )
                   }
                   className="mt-6 w-full bg-slate-700 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-600 transition flex items-center justify-center"
                 >
                   <Share2 size={18} className="mr-2" />
-                  Share
+                  {t("Share")}
                 </button>
               )}
             </div>
@@ -199,7 +206,9 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                 />
               </div>
               <div className="mt-4">
-                <p className="text-gray-400 text-sm mb-2">Bitcoin Address</p>
+                <p className="text-gray-400 text-sm mb-2">
+                  {t("Bitcoin Address")}
+                </p>
                 <div className="bg-gray-800 rounded-lg px-4 py-3 flex items-center justify-between">
                   <span className="font-mono text-sm break-all">
                     {account?.bitcoin_address}
@@ -209,7 +218,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                       copyToClipboard(account?.bitcoin_address || "")
                     }
                     className="p-2 text-gray-400 hover:text-white rounded-full"
-                    title="Copy Bitcoin Address"
+                    title={t("Copy Bitcoin Address")}
                   >
                     {copied ? (
                       <Check size={18} className="text-green-500" />
@@ -223,14 +232,17 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                 <button
                   onClick={() =>
                     handleShare(
-                      "My Bitcoin Address",
-                      `You can send me Bitcoin On Chain using this address: ${account?.bitcoin_address}`
+                      t("My Bitcoin Address"),
+                      t(
+                        "You can send me Bitcoin On Chain using this address: {address}",
+                        { address: account?.bitcoin_address || "" }
+                      )
                     )
                   }
                   className="mt-6 w-full bg-slate-700 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-600 transition flex items-center justify-center"
                 >
                   <Share2 size={18} className="mr-2" />
-                  Share
+                  {t("Share")}
                 </button>
               )}
             </div>
@@ -276,7 +288,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                       type="number"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
-                      placeholder="Amount (sats)"
+                      placeholder={t("Amount (sats)")}
                       className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
                     />
                   </div>
@@ -289,7 +301,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                       type="text"
                       value={memo}
                       onChange={(e) => setMemo(e.target.value)}
-                      placeholder="Memo (optional)"
+                      placeholder={t("Memo (optional)")}
                       className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
                     />
                   </div>
@@ -298,7 +310,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
                     disabled={loading || !amount}
                     className="w-full bg-slate-700 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-600 disabled:opacity-50 transition"
                   >
-                    {loading ? "Generating..." : "Generate Invoice"}
+                    {loading ? t("Generating...") : t("Generate Invoice")}
                   </button>
                   {error && (
                     <div className="text-red-400 text-center text-sm mt-2">

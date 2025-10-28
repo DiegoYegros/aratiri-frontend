@@ -2,6 +2,9 @@
 import { formatRelativeDate } from "@/app/lib/time";
 import { useState } from "react";
 import { Transaction } from "../../lib/api";
+import { TranslateFn, useTranslation } from "@/app/hooks/useTranslation";
+import { useLanguage } from "@/app/LanguageProvider";
+import { LanguageCode } from "@/app/lib/translations";
 
 const currencyFormatter = (amount: number, currency: string): string => {
   return new Intl.NumberFormat(undefined, {
@@ -16,7 +19,9 @@ const getTransactionProperties = (
   tx: Transaction,
   currency: string,
   balanceVisible: boolean,
-  displayUnit: "sats" | "btc" | "fiat"
+  displayUnit: "sats" | "btc" | "fiat",
+  t: TranslateFn,
+  language: LanguageCode
 ) => {
   const isCredit = tx.type.includes("CREDIT") || tx.type.includes("DEPOSIT");
   const sign = isCredit ? "+" : "-";
@@ -43,10 +48,10 @@ const getTransactionProperties = (
   };
   const statusText =
     tx.status === "PENDING"
-      ? "Pending..."
+      ? t("Pending...")
       : tx.status === "FAILED"
-      ? "Failed"
-      : formatRelativeDate(tx.date);
+      ? t("Failed")
+      : formatRelativeDate(tx.date, language);
 
   let textElement: React.ReactNode = formatAmount();
   if (tx.status === "FAILED" && balanceVisible) {
@@ -82,10 +87,12 @@ export const TransactionsTab = ({
 }) => {
   const [showAll, setShowAll] = useState(false);
   const visibleTransactions = showAll ? transactions : transactions.slice(0, 5);
+  const t = useTranslation();
+  const { language } = useLanguage();
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6">Recent Transactions</h2>
+      <h2 className="text-2xl font-bold mb-6">{t("Recent Transactions")}</h2>
       <div className="space-y-3">
         {transactions.length > 0 ? (
           visibleTransactions.map((tx) => {
@@ -93,7 +100,9 @@ export const TransactionsTab = ({
               tx,
               currency,
               balanceVisible,
-              displayUnit
+              displayUnit,
+              t,
+              language
             );
             return (
               <div
@@ -103,7 +112,7 @@ export const TransactionsTab = ({
                 <div
                   className="cursor-pointer"
                   onClick={onUnitToggle}
-                  title="Click to change unit"
+                  title={t("Click to change unit")}
                 >
                   <p className={`font-bold ${color}`}>{text}</p>
                 </div>
@@ -116,7 +125,7 @@ export const TransactionsTab = ({
           })
         ) : (
           <p className="text-gray-400 text-center py-8">
-            No transactions found in the last 30 days.
+            {t("No transactions found in the last 30 days.")}
           </p>
         )}
       </div>
@@ -126,7 +135,7 @@ export const TransactionsTab = ({
             onClick={() => setShowAll(true)}
             className="text-yellow-400 hover:text-yellow-300"
           >
-            See more
+            {t("See more")}
           </button>
         </div>
       )}

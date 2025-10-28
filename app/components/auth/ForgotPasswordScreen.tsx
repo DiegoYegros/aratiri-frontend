@@ -2,6 +2,7 @@
 import { ArrowLeft, Zap } from "lucide-react";
 import { useState } from "react";
 import { apiCall } from "../../lib/api";
+import { useTranslation } from "@/app/hooks/useTranslation";
 
 export const ForgotPasswordScreen = ({
   setShowForgotPassword,
@@ -15,6 +16,7 @@ export const ForgotPasswordScreen = ({
   const [error, setError] = useState("");
   const [isVerification, setIsVerification] = useState(false);
   const [success, setSuccess] = useState("");
+  const t = useTranslation();
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +29,7 @@ export const ForgotPasswordScreen = ({
         body: JSON.stringify({ email }),
       });
       setIsVerification(true);
-      setSuccess("A password reset code has been sent to your email.");
+      setSuccess(t("A password reset code has been sent to your email."));
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -45,7 +47,9 @@ export const ForgotPasswordScreen = ({
         method: "POST",
         body: JSON.stringify({ email, code, newPassword }),
       });
-      setSuccess("Password has been reset successfully. You can now log in.");
+      setSuccess(
+        t("Password has been reset successfully. You can now log in.")
+      );
       setTimeout(() => {
         setShowForgotPassword(false);
       }, 2000);
@@ -72,7 +76,7 @@ export const ForgotPasswordScreen = ({
         <div className="text-center">
           <Zap className="w-16 h-16 text-yellow-400 mx-auto mb-4 animate-pulse" />
           <h1 className="text-4xl font-bold">Aratiri</h1>
-          <p className="text-gray-400">Reset your password</p>
+          <p className="text-gray-400">{t("Reset your password")}</p>
         </div>
 
         {error && (
@@ -92,7 +96,7 @@ export const ForgotPasswordScreen = ({
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
+              placeholder={t("Enter your email")}
               className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
               required
             />
@@ -101,7 +105,7 @@ export const ForgotPasswordScreen = ({
               disabled={loading}
               className="w-full bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50 transition"
             >
-              {loading ? "Sending..." : "Send Reset Code"}
+              {loading ? t("Sending...") : t("Send Reset Code")}
             </button>
           </form>
         ) : (
@@ -110,7 +114,7 @@ export const ForgotPasswordScreen = ({
               type="text"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="Verification Code"
+              placeholder={t("Verification Code")}
               className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
               required
             />
@@ -118,7 +122,7 @@ export const ForgotPasswordScreen = ({
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="New Password"
+              placeholder={t("New Password")}
               className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
               required
             />
@@ -127,7 +131,7 @@ export const ForgotPasswordScreen = ({
               disabled={loading}
               className="w-full bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50 transition"
             >
-              {loading ? "Resetting..." : "Reset Password"}
+              {loading ? t("Resetting...") : t("Reset Password")}
             </button>
           </form>
         )}

@@ -3,6 +3,7 @@ import { Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiCall } from "../../lib/api";
 import GoogleLogin from "./GoogleLogin";
+import { useTranslation } from "@/app/hooks/useTranslation";
 
 export const LoginScreen = ({
   setToken,
@@ -21,6 +22,7 @@ export const LoginScreen = ({
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(initialMessage || "");
+  const t = useTranslation();
 
   useEffect(() => {
     if (initialMessage) {
@@ -78,7 +80,7 @@ export const LoginScreen = ({
         <div className="text-center">
           <Zap className="w-16 h-16 text-yellow-400 mx-auto mb-4 animate-pulse" />
           <h1 className="text-4xl font-bold">Aratiri</h1>
-          <p className="text-gray-400">Bitcoin Lightning Wallet</p>
+          <p className="text-gray-400">{t("Bitcoin Lightning Wallet")}</p>
         </div>
 
         {error && (
@@ -92,7 +94,7 @@ export const LoginScreen = ({
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="Username"
+            placeholder={t("Username")}
             className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
             required
           />
@@ -100,7 +102,7 @@ export const LoginScreen = ({
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
+            placeholder={t("Password")}
             className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
             required
           />
@@ -110,7 +112,7 @@ export const LoginScreen = ({
               onClick={() => setShowForgotPassword(true)}
               className="text-sm text-yellow-400 hover:text-yellow-300"
             >
-              Forgot Password?
+              {t("Forgot Password?")}
             </button>
           </div>
           <button
@@ -118,7 +120,7 @@ export const LoginScreen = ({
             disabled={loading}
             className="w-full bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50 transition"
           >
-            {loading ? "Signing In..." : "Sign In"}
+            {loading ? t("Signing In...") : t("Sign In")}
           </button>
         </form>
 
@@ -127,7 +129,7 @@ export const LoginScreen = ({
             <div className="w-full border-t border-gray-600" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="bg-gray-800 px-2 text-gray-500">OR</span>
+            <span className="bg-gray-800 px-2 text-gray-500">{t("OR")}</span>
           </div>
         </div>
 
@@ -140,7 +142,7 @@ export const LoginScreen = ({
             onClick={() => setShowRegister(true)}
             className="text-yellow-400 hover:text-yellow-300"
           >
-            Create new account
+            {t("Create new account")}
           </button>
         </div>
       </div>

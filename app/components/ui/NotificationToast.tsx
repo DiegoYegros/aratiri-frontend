@@ -3,6 +3,7 @@
 import { X, Zap } from "lucide-react";
 import { useEffect } from "react";
 import { Notification } from "../../lib/api";
+import { useTranslation } from "@/app/hooks/useTranslation";
 
 export const NotificationToast = ({
   notification,
@@ -17,6 +18,7 @@ export const NotificationToast = ({
     }, 5000);
     return () => clearTimeout(timer);
   }, [notification.id, onClose]);
+  const t = useTranslation();
   const isSuccess = notification.type === "success";
   const bgColor = isSuccess ? "bg-green-500/20" : "bg-red-500/20";
   const borderColor = isSuccess ? "border-green-400" : "border-red-400";
@@ -41,7 +43,7 @@ export const NotificationToast = ({
               onClick={() => onClose(notification.id)}
               className="inline-flex text-gray-400 hover:text-white"
             >
-              <span className="sr-only">Close</span>
+              <span className="sr-only">{t("Close")}</span>
               <X className="h-5 w-5" />
             </button>
           </div>

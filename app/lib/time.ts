@@ -1,39 +1,36 @@
-const aMinute = 60;
-const anHour = aMinute * 60;
-const aDay = anHour * 24;
+import { LanguageCode } from "./translations";
 
-const formatTime = (date: Date) => {
-  const seconds = Math.round((Date.now() - date.getTime()) / 1000);
+const localeForLanguage = (language: LanguageCode) =>
+  language === "es" ? "es-ES" : "en-US";
 
-  if (seconds < aMinute) {
-    return `${seconds} second${seconds > 1 ? "s" : ""} ago`;
+export const formatRelativeDate = (
+  dateString: string,
+  language: LanguageCode
+): string => {
+  const date = new Date(dateString);
+  const now = Date.now();
+  const diffInSeconds = Math.round((date.getTime() - now) / 1000);
+  const absSeconds = Math.abs(diffInSeconds);
+  const formatter = new Intl.RelativeTimeFormat(localeForLanguage(language), {
+    numeric: "auto",
+  });
+
+  if (absSeconds < 60) {
+    return formatter.format(diffInSeconds, "second");
   }
 
-  const minutes = Math.round(seconds / aMinute);
-  if (minutes < 60) {
-    return `${minutes} minute${minutes > 1 ? "s" : ""} ago`;
+  const diffInMinutes = Math.round(diffInSeconds / 60);
+  if (Math.abs(diffInMinutes) < 60) {
+    return formatter.format(diffInMinutes, "minute");
   }
 
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) {
-    return `${hours} hour${hours > 1 ? "s" : ""} ago`;
+  const diffInHours = Math.round(diffInMinutes / 60);
+  if (Math.abs(diffInHours) < 24) {
+    return formatter.format(diffInHours, "hour");
   }
 
-  return null;
-};
-
-const formatDate = (date: Date) => {
-  return date.toLocaleDateString("en-US", {
+  return date.toLocaleDateString(localeForLanguage(language), {
     month: "long",
     day: "numeric",
   });
-};
-
-export const formatRelativeDate = (dateString: string): string => {
-  const date = new Date(dateString);
-  const relativeTime = formatTime(date);
-  if (relativeTime) {
-    return relativeTime;
-  }
-  return formatDate(date);
 };

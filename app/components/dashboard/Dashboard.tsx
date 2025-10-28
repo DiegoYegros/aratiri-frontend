@@ -18,6 +18,7 @@ import { ReceiveModal } from "./ReceiveModal";
 import { SendModal } from "./SendModal";
 import { SettingsTab } from "./SettingsTab";
 import { TransactionsTab } from "./TransactionsTab";
+import { useTranslation } from "@/app/hooks/useTranslation";
 
 export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
   const [account, setAccount] = useState<Account | null>(null);
@@ -28,6 +29,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
   const { notifications, addNotification, removeNotification } = useNotifier();
   const [balanceVisible, setBalanceVisible] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const t = useTranslation();
 
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
   const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
@@ -62,9 +64,9 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
       setTransactions(transData.transactions || []);
     } catch (err: any) {
       console.error("Failed to fetch data:", err);
-      setError("Failed to fetch data: " + err.message);
+      setError(t("Failed to fetch data: {error}", { error: err.message }));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -187,10 +189,10 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
 
           if (eventType === "payment_received" && eventData) {
             const amountSats = eventData.amountSats || 0;
-            const memo = eventData.memo || "No description";
+            const memo = eventData.memo || t("No description");
 
             addNotification(
-              "Payment Received",
+              t("Payment Received"),
               `${amountSats.toLocaleString()} sats - ${memo}`,
               "success"
             );
@@ -397,13 +399,13 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
             className="bg-green-500/20 text-green-300 font-bold py-4 px-4 rounded-lg hover:bg-green-500/30 transition flex items-center justify-center space-x-2 text-lg"
           >
             <ArrowLeft />
-            <span>Receive</span>
+            <span>{t("Receive")}</span>
           </button>
           <button
             onClick={() => setIsSendModalOpen(true)}
             className="bg-yellow-400/20 text-yellow-300 font-bold py-4 px-4 rounded-lg hover:bg-yellow-400/30 transition flex items-center justify-center space-x-2 text-lg"
           >
-            <span>Send</span>
+            <span>{t("Send")}</span>
             <ArrowRight />
           </button>
         </div>

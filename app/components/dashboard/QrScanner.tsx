@@ -2,6 +2,7 @@
 import jsQR from "jsqr";
 import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "@/app/hooks/useTranslation";
 
 interface QrScannerProps {
   onScanSuccess: (data: string) => void;
@@ -12,6 +13,7 @@ export const QrScanner = ({ onScanSuccess, onClose }: QrScannerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const t = useTranslation();
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -64,7 +66,7 @@ export const QrScanner = ({ onScanSuccess, onClose }: QrScannerProps) => {
       } catch (err) {
         console.error("Error accessing camera:", err);
         setError(
-          "Could not access camera. Please check permissions and try again."
+          t("Could not access camera. Please check permissions and try again.")
         );
       }
     };
@@ -85,7 +87,7 @@ export const QrScanner = ({ onScanSuccess, onClose }: QrScannerProps) => {
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
       <div className="bg-gray-800 p-4 rounded-lg relative w-full max-w-md">
-        <h3 className="text-center text-lg mb-2">Scan QR Code</h3>
+        <h3 className="text-center text-lg mb-2">{t("Scan QR Code")}</h3>
         <button
           onClick={onClose}
           className="absolute top-2 right-2 p-2 text-gray-400 hover:text-white"

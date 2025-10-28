@@ -9,6 +9,7 @@ import {
   LnurlParams,
 } from "../../lib/api";
 import { QrScanner } from "./QrScanner";
+import { useTranslation } from "@/app/hooks/useTranslation";
 
 interface SendModalProps {
   onClose: () => void;
@@ -27,6 +28,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
   const [onChainAmount, setOnChainAmount] = useState("");
   const [fee, setFee] = useState<EstimateFeeResponse | null>(null);
   const [showFee, setShowFee] = useState(false);
+  const t = useTranslation();
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -73,7 +75,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
       );
 
       if (data.type === "error") {
-        throw new Error(data.error || "Unsupported or invalid format");
+        throw new Error(data.error || t("Unsupported or invalid format"));
       }
 
       setDecoded(data);
@@ -137,9 +139,10 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
           amountMsat > params.maxSendable
         ) {
           throw new Error(
-            `Amount must be between ${params.minSendable / 1000} and ${
-              params.maxSendable / 1000
-            } sats.`
+            t("Amount must be between {min} and {max} sats.", {
+              min: (params.minSendable / 1000).toLocaleString(),
+              max: (params.maxSendable / 1000).toLocaleString(),
+            })
           );
         }
 
@@ -160,10 +163,10 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
           }),
         });
       } else {
-        throw new Error("Payment type not supported yet.");
+        throw new Error(t("Payment type not supported yet."));
       }
 
-      setSuccess(`Payment initiated! Status: ${data.status}.`);
+      setSuccess(t("Payment initiated! Status: {status}.", { status: data.status }));
       setInputValue("");
       setDecoded(null);
       setTimeout(() => {
@@ -190,13 +193,13 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
         const invoice = decoded.data as DecodedInvoice;
         return (
           <div className="mt-6 bg-gray-900/50 p-4 rounded-lg space-y-3 animate-fade-in">
-            <h3 className="font-bold text-lg">Invoice Details</h3>
+            <h3 className="font-bold text-lg">{t("Invoice Details")}</h3>
             <div>
-              <span className="font-semibold text-gray-400">Amount:</span>{" "}
+              <span className="font-semibold text-gray-400">{t("Amount:")}</span>{" "}
               {invoice.num_satoshis.toLocaleString()} sats
             </div>
             <div className="truncate">
-              <span className="font-semibold text-gray-400">Description:</span>{" "}
+              <span className="font-semibold text-gray-400">{t("Description:")}</span>{" "}
               {invoice.description || "N/A"}
             </div>
             <button
@@ -205,8 +208,10 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
               className="w-full bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 disabled:opacity-50 transition"
             >
               {loading
-                ? "Paying..."
-                : `Pay ${invoice.num_satoshis.toLocaleString()} sats`}
+                ? t("Paying...")
+                : t("Pay {amount} sats", {
+                    amount: invoice.num_satoshis.toLocaleString(),
+                  })}
             </button>
           </div>
         );
@@ -217,7 +222,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
         const metadata = JSON.parse(params.metadata);
         const description =
           metadata.find((m: any) => m[0] === "text/plain")?.[1] ||
-          "LNURL Payment";
+          t("LNURL Payment");
 
         return (
           <div className="mt-6 bg-gray-900/50 p-4 rounded-lg space-y-4 animate-fade-in">
@@ -232,11 +237,10 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
                 value={lnurlAmount}
                 onChange={(e) => setLnurlAmount(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={`Amount (${(
-                  params.minSendable / 1000
-                ).toLocaleString()} - ${(
-                  params.maxSendable / 1000
-                ).toLocaleString()} sats)`}
+                placeholder={t("Amount ({min} - {max} sats)", {
+                  min: (params.minSendable / 1000).toLocaleString(),
+                  max: (params.maxSendable / 1000).toLocaleString(),
+                })}
                 className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
               />
             </div>
@@ -251,7 +255,9 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
                   value={lnurlComment}
                   onChange={(e) => setLnurlComment(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={`Comment (optional, max ${params.commentAllowed} chars)`}
+                  placeholder={t("Comment (optional, max {count} chars)", {
+                    count: params.commentAllowed,
+                  })}
                   maxLength={params.commentAllowed}
                   className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
                 />
@@ -262,7 +268,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
               disabled={loading || !lnurlAmount}
               className="w-full bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 disabled:opacity-50 transition"
             >
-              {loading ? "Processing..." : "Pay"}
+              {loading ? t("Processing...") : t("Pay")}
             </button>
           </div>
         );
@@ -280,25 +286,31 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
                 value={onChainAmount}
                 onChange={(e) => setOnChainAmount(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Amount (sats)"
+                placeholder={t("Amount (sats)")}
                 className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
                 disabled={showFee}
               />
             </div>
             {showFee && fee ? (
               <div className="text-center">
-                <p>Fee: {fee.fee_sat.toLocaleString()} sats</p>
                 <p>
-                  Total:{" "}
-                  {(parseInt(onChainAmount) + fee.fee_sat).toLocaleString()}{" "}
-                  sats
+                  {t("Fee: {fee} sats", {
+                    fee: fee.fee_sat.toLocaleString(),
+                  })}
+                </p>
+                <p>
+                  {t("Total: {total} sats", {
+                    total: (
+                      parseInt(onChainAmount) + fee.fee_sat
+                    ).toLocaleString(),
+                  })}
                 </p>
                 <button
                   onClick={handlePay}
                   disabled={loading}
                   className="w-full mt-4 bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 disabled:opacity-50 transition"
                 >
-                  {loading ? "Sending..." : "Confirm and Send"}
+                  {loading ? t("Sending...") : t("Confirm and Send")}
                 </button>
               </div>
             ) : (
@@ -307,7 +319,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
                 disabled={loading || !onChainAmount}
                 className="w-full bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 disabled:opacity-50 transition"
               >
-                {loading ? "Estimating Fee..." : "Continue"}
+                {loading ? t("Estimating Fee...") : t("Continue")}
               </button>
             )}
           </div>
@@ -342,7 +354,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
             <div className="w-8" />
           )}
           <h2 className="text-2xl font-bold">
-            {decoded ? "Details" : "Send Payment"}
+            {decoded ? t("Details") : t("Send Payment")}
           </h2>
           <button
             onClick={onClose}
@@ -358,7 +370,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Paste Invoice, LNURL, Address, or Alias"
+              placeholder={t("Paste Invoice, LNURL, Address, or Alias")}
               className="w-full h-32 px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 font-mono text-sm"
             />
             <div className="flex space-x-2">
@@ -367,12 +379,12 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
                 disabled={loading || !inputValue}
                 className="flex-grow bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-500 disabled:opacity-50 transition"
               >
-                {loading ? "Decoding..." : "Decode"}
+                {loading ? t("Decoding...") : t("Decode")}
               </button>
               <button
                 onClick={() => setIsScanning(true)}
                 className="bg-gray-600 text-white p-3 rounded-lg hover:bg-gray-500 disabled:opacity-50 transition"
-                title="Scan QR Code"
+                title={t("Scan QR Code")}
               >
                 <QrCode />
               </button>
