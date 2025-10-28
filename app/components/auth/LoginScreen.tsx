@@ -143,9 +143,6 @@ export const LoginScreen = ({
             Create new account
           </button>
         </div>
-        <div className="absolute bottom-4 right-4 text-xs text-gray-500">
-          v0.1.0
-        </div>
       </div>
     </div>
   );
