@@ -31,7 +31,7 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
   const t = useTranslation();
 
   useEffect(() => {
-    if (navigator.share) {
+    if ("share" in navigator) {
       setShowShareButton(true);
     }
   }, []);

@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNotifier } from "../../hooks/useNotifier";
 import { Account, API_BASE_URL, apiCall, Transaction } from "../../lib/api";
 import { NotificationToast } from "../ui/NotificationToast";
+import { BtcPriceCard } from "./BtcPriceCard";
 import { ReceiveModal } from "./ReceiveModal";
 import { SendModal } from "./SendModal";
 import { SettingsTab } from "./SettingsTab";
@@ -332,7 +333,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
 
       {/* Header */}
       <header className="bg-gray-800/50 backdrop-blur-sm border-b border-yellow-500/20 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div
               className="flex items-center space-x-3 cursor-pointer"
@@ -364,7 +365,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-grow max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-grow max-w-[1400px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {error && (
           <div className="bg-red-500/20 border border-red-500 text-red-300 px-4 py-3 rounded-lg mb-6">
             {error}
@@ -391,6 +392,8 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
             </button>
           </div>
         </div>
+
+        <BtcPriceCard currency={selectedCurrency} />
 
         {/* Action Buttons */}
         <div className="grid grid-cols-2 gap-4 mb-8">
