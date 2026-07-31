@@ -65,6 +65,12 @@ export interface EstimateFeeResponse {
   sat_per_vbyte: number;
 }
 
+export interface CurrentBtcPrice {
+  currency: string;
+  price: number;
+  updatedAt: string;
+}
+
 export interface Notification {
   id: number;
   title: string;
@@ -96,8 +102,7 @@ const forceLogout = () => {
 };
 
 export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
-  const originalRequest = { endpoint, options };
-  let token = localStorage.getItem("aratiri_accessToken");
+  const token = localStorage.getItem("aratiri_accessToken");
 
   const headers = new Headers(options.headers || {});
   if (options.body) {
@@ -174,7 +179,6 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
     }
     return {};
   } catch (error) {
-    console.error("API call error:", error);
     throw error;
   }
 };

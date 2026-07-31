@@ -18,13 +18,13 @@ const decodeJwt = (token: string): { exp: number } | null => {
         .join("")
     );
     return JSON.parse(jsonPayload);
-  } catch (error) {
+  } catch {
     return null;
   }
 };
 
 export default function AratiriFrontend() {
-  const [token, setToken] = useState<string | null>(null);
+  const [, setToken] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginMessage, setLoginMessage] = useState<string | null>(null);
   const [showRegister, setShowRegister] = useState(false);

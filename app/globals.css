@@ -1,28 +1,90 @@
 @import "tailwindcss";
 
+/* Quiet Voltage — dark-only Bitcoin instrument tokens */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0b0b0a;
+  --foreground: #f0efe9;
+  --panel: #141412;
+  --panel-elevated: #1a1916;
+  --panel-edge: #2c2b26;
+  --muted: #8c8a80;
+  --muted-strong: #b3b1a6;
+  --accent: #c9a227;
+  --accent-hover: #dbb43a;
+  --accent-subtle: rgba(201, 162, 39, 0.14);
+  --accent-fg: #0b0b0a;
+  --input: #121210;
+  --credit: #5fad6e;
+  --debit: #d16a6a;
+  --pending: #c9a227;
+  --danger: #d16a6a;
+  --danger-bg: rgba(209, 106, 106, 0.12);
+  --success: #5fad6e;
+  --success-bg: rgba(95, 173, 110, 0.12);
+  --overlay: rgba(0, 0, 0, 0.72);
+  --focus-ring: #c9a227;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-panel: var(--panel);
+  --color-panel-elevated: var(--panel-elevated);
+  --color-panel-edge: var(--panel-edge);
+  --color-muted: var(--muted);
+  --color-muted-strong: var(--muted-strong);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-fg: var(--accent-fg);
+  --color-input: var(--input);
+  --color-credit: var(--credit);
+  --color-debit: var(--debit);
+  --color-pending: var(--pending);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-overlay: var(--overlay);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  min-height: 100dvh;
+}
+
+/* Visible focus — never remove without replacement */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible),
+input:focus:not(:focus-visible),
+select:focus:not(:focus-visible),
+textarea:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.font-amount,
+.font-address {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 @keyframes spin {
@@ -34,6 +96,82 @@ body {
   }
 }
 
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes calm-busy {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
 .animate-spin-smooth {
   animation: spin 1.5s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+}
+
+.animate-fade-in {
+  animation: fade-in 180ms ease-out both;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 220ms ease-out both;
+}
+
+.animate-fade-in-right {
+  animation: fade-in-right 220ms ease-out both;
+}
+
+.animate-calm-busy {
+  animation: calm-busy 1.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin-smooth {
+    animation: none;
+  }
+
+  .animate-fade-in,
+  .animate-fade-in-up,
+  .animate-fade-in-right {
+    animation: none;
+  }
+
+  /* Calm busy without rotation when motion is reduced */
+  .animate-spin-smooth.is-busy,
+  [aria-busy="true"] .animate-spin-smooth,
+  button[aria-busy="true"] .refresh-zap-icon {
+    animation: calm-busy 1.5s ease-in-out infinite;
+  }
 }

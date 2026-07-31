@@ -17,8 +17,7 @@ export const useCurrency = () => {
         if (storedCurrency && currencies.includes(storedCurrency)) {
           setSelectedCurrencyState(storedCurrency);
         }
-      } catch (error) {
-        console.error("Failed to fetch available currencies:", error);
+      } catch {
         setAvailableCurrencies(["usd", "pyg", "ars", "eur"]);
       } finally {
         setLoading(false);

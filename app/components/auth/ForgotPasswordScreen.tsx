@@ -1,8 +1,14 @@
 "use client";
-import { ArrowLeft, Zap } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { apiCall } from "../../lib/api";
 import { useTranslation } from "@/app/hooks/useTranslation";
+import { AuthShell } from "../ui/AuthShell";
+import { Alert } from "../ui/Alert";
+import { IconButton } from "../ui/IconButton";
+
+const fieldClass =
+  "w-full px-4 py-3 bg-input border border-panel-edge rounded-lg text-foreground placeholder:text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent transition touch-manipulation";
 
 export const ForgotPasswordScreen = ({
   setShowForgotPassword,
@@ -61,81 +67,97 @@ export const ForgotPasswordScreen = ({
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4 font-sans">
-      <div className="relative w-full max-w-md bg-gray-800 rounded-2xl shadow-lg p-8 space-y-6 border border-yellow-500/20">
-        <button
-          onClick={() =>
-            isVerification
-              ? setIsVerification(false)
-              : setShowForgotPassword(false)
-          }
-          className="absolute top-4 left-4 p-2 text-gray-400 hover:text-white"
-        >
-          <ArrowLeft />
-        </button>
-        <div className="text-center">
-          <Zap className="w-16 h-16 text-yellow-400 mx-auto mb-4 animate-pulse" />
-          <h1 className="text-4xl font-bold">Aratiri</h1>
-          <p className="text-gray-400">{t("Reset your password")}</p>
+    <AuthShell
+      subtitle={t("Reset your password")}
+      topLeft={
+        <div className="absolute top-3 left-3 z-10">
+          <IconButton
+            label={t("Back")}
+            onClick={() =>
+              isVerification
+                ? setIsVerification(false)
+                : setShowForgotPassword(false)
+            }
+          >
+            <ArrowLeft className="w-5 h-5" aria-hidden="true" />
+          </IconButton>
         </div>
+      }
+    >
+      {error && <Alert variant="danger">{error}</Alert>}
+      {success && <Alert variant="success">{success}</Alert>}
 
-        {error && (
-          <div className="bg-red-500/20 border border-red-500 text-red-300 px-4 py-3 rounded-lg text-center">
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="bg-green-500/20 border border-green-500 text-green-300 px-4 py-3 rounded-lg text-center">
-            {success}
-          </div>
-        )}
-
-        {!isVerification ? (
-          <form onSubmit={handleForgotPassword} className="space-y-4">
+      {!isVerification ? (
+        <form onSubmit={handleForgotPassword} className="space-y-4">
+          <div className="space-y-1.5">
+            <label htmlFor="forgot-email" className="block text-sm text-muted-strong">
+              {t("Email")}
+            </label>
             <input
+              id="forgot-email"
+              name="email"
               type="email"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder={t("Enter your email")}
-              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
+              className={fieldClass}
               required
             />
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50 transition"
-            >
-              {loading ? t("Sending...") : t("Send Reset Code")}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleResetPassword} className="space-y-4">
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full min-h-11 bg-accent text-accent-fg font-semibold py-3 px-4 rounded-lg hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50 transition touch-manipulation"
+          >
+            {loading ? t("Sending...") : t("Send Reset Code")}
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={handleResetPassword} className="space-y-4">
+          <div className="space-y-1.5">
+            <label htmlFor="forgot-code" className="block text-sm text-muted-strong">
+              {t("Verification Code")}
+            </label>
             <input
+              id="forgot-code"
+              name="code"
               type="text"
+              autoComplete="one-time-code"
+              inputMode="numeric"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder={t("Verification Code")}
-              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
+              className={fieldClass}
               required
             />
+          </div>
+          <div className="space-y-1.5">
+            <label
+              htmlFor="forgot-new-password"
+              className="block text-sm text-muted-strong"
+            >
+              {t("New Password")}
+            </label>
             <input
+              id="forgot-new-password"
+              name="newPassword"
               type="password"
+              autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder={t("New Password")}
-              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
+              className={fieldClass}
               required
             />
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50 transition"
-            >
-              {loading ? t("Resetting...") : t("Reset Password")}
-            </button>
-          </form>
-        )}
-      </div>
-    </div>
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full min-h-11 bg-accent text-accent-fg font-semibold py-3 px-4 rounded-lg hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50 transition touch-manipulation"
+          >
+            {loading ? t("Resetting...") : t("Reset Password")}
+          </button>
+        </form>
+      )}
+    </AuthShell>
   );
 };

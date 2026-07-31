@@ -3,6 +3,8 @@ import jsQR from "jsqr";
 import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "@/app/hooks/useTranslation";
+import { IconButton } from "../ui/IconButton";
+import { Alert } from "../ui/Alert";
 
 interface QrScannerProps {
   onScanSuccess: (data: string) => void;
@@ -14,6 +16,16 @@ export const QrScanner = ({ onScanSuccess, onClose }: QrScannerProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState<string | null>(null);
   const t = useTranslation();
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -63,8 +75,7 @@ export const QrScanner = ({ onScanSuccess, onClose }: QrScannerProps) => {
           videoRef.current.play();
           animationFrameId = requestAnimationFrame(tick);
         }
-      } catch (err) {
-        console.error("Error accessing camera:", err);
+      } catch {
         setError(
           t("Could not access camera. Please check permissions and try again.")
         );
@@ -82,23 +93,41 @@ export const QrScanner = ({ onScanSuccess, onClose }: QrScannerProps) => {
         stream.getTracks().forEach((track) => track.stop());
       }
     };
-  }, [onScanSuccess]);
+  }, [onScanSuccess, t]);
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-      <div className="bg-gray-800 p-4 rounded-lg relative w-full max-w-md">
-        <h3 className="text-center text-lg mb-2">{t("Scan QR Code")}</h3>
-        <button
-          onClick={onClose}
-          className="absolute top-2 right-2 p-2 text-gray-400 hover:text-white"
-        >
-          <X />
-        </button>
-        <div className="w-full aspect-square bg-gray-900 rounded-md overflow-hidden">
-          <video ref={videoRef} className="w-full h-full object-cover"></video>
+    <div
+      className="fixed inset-0 bg-overlay flex items-center justify-center z-50 p-4 animate-fade-in"
+      role="presentation"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="qr-scanner-title"
+        className="bg-panel border border-panel-edge p-4 rounded-xl relative w-full max-w-md animate-fade-in-up"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <h3 id="qr-scanner-title" className="text-lg font-semibold">
+            {t("Scan QR Code")}
+          </h3>
+          <IconButton label={t("Close")} onClick={onClose}>
+            <X className="w-5 h-5" aria-hidden="true" />
+          </IconButton>
+        </div>
+        <div className="w-full aspect-square bg-input rounded-lg overflow-hidden border border-panel-edge">
+          <video
+            ref={videoRef}
+            className="w-full h-full object-cover"
+            muted
+            playsInline
+          />
           <canvas ref={canvasRef} className="hidden" />
         </div>
-        {error && <p className="text-red-400 mt-2 text-center">{error}</p>}
+        {error && (
+          <Alert variant="danger" className="mt-3">
+            {error}
+          </Alert>
+        )}
       </div>
     </div>
   );

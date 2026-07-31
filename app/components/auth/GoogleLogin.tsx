@@ -18,6 +18,22 @@ const GoogleLogin = ({ onSuccess, onError }: GoogleLoginProps) => {
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const t = useTranslation();
 
+  const onSuccessRef = useRef(onSuccess);
+  const onErrorRef = useRef(onError);
+  const tRef = useRef(t);
+
+  useEffect(() => {
+    onSuccessRef.current = onSuccess;
+  }, [onSuccess]);
+
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
+
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
+
   useEffect(() => {
     const scriptTag = document.createElement("script");
     scriptTag.src = "https://accounts.google.com/gsi/client";
@@ -34,13 +50,22 @@ const GoogleLogin = ({ onSuccess, onError }: GoogleLoginProps) => {
   }, []);
 
   useEffect(() => {
-    if (scriptLoaded && buttonDiv.current) {
+    if (scriptLoaded && buttonDiv.current && window.google?.accounts?.id) {
       window.google.accounts.id.initialize({
         client_id:
           "254642422573-4l9v69dl2km5c9gqj7m7hr2gli059vk8.apps.googleusercontent.com",
-        callback: handleCredentialResponse,
+        callback: (response: { credential?: string }) => {
+          if (response.credential) {
+            onSuccessRef.current(response.credential);
+          } else {
+            onErrorRef.current(
+              tRef.current("Google credential was not received.")
+            );
+          }
+        },
       });
 
+      buttonDiv.current.replaceChildren();
       window.google.accounts.id.renderButton(buttonDiv.current, {
         theme: "outline",
         size: "large",
@@ -49,14 +74,6 @@ const GoogleLogin = ({ onSuccess, onError }: GoogleLoginProps) => {
       });
     }
   }, [scriptLoaded]);
-
-  const handleCredentialResponse = (response: any) => {
-    if (response.credential) {
-      onSuccess(response.credential);
-    } else {
-      onError(t("Google credential was not received."));
-    }
-  };
 
   return <div ref={buttonDiv} className="flex justify-center"></div>;
 };

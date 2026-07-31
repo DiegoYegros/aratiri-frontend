@@ -1,5 +1,6 @@
 "use client";
 import { useCurrency } from "@/app/hooks/useCurrency";
+import { useBtcPrice } from "@/app/hooks/useBtcPrice";
 import {
   ArrowLeft,
   ArrowRight,
@@ -7,18 +8,28 @@ import {
   EyeOff,
   LogOut,
   Settings,
-  X,
   Zap,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNotifier } from "../../hooks/useNotifier";
 import { Account, API_BASE_URL, apiCall, Transaction } from "../../lib/api";
+import {
+  formatBtc,
+  formatFiat,
+  formatFiatAmount,
+  formatSats,
+} from "../../lib/format";
 import { NotificationToast } from "../ui/NotificationToast";
+import { Modal } from "../ui/Modal";
+import { IconButton } from "../ui/IconButton";
+import { Alert } from "../ui/Alert";
 import { ReceiveModal } from "./ReceiveModal";
 import { SendModal } from "./SendModal";
 import { SettingsTab } from "./SettingsTab";
 import { TransactionsTab } from "./TransactionsTab";
+import { RefreshZapButton } from "./RefreshZapButton";
 import { useTranslation } from "@/app/hooks/useTranslation";
+import { useLanguage } from "@/app/LanguageProvider";
 
 export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
   const [account, setAccount] = useState<Account | null>(null);
@@ -30,6 +41,9 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
   const [balanceVisible, setBalanceVisible] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const t = useTranslation();
+  const { language } = useLanguage();
+  const locale = language === "es" ? "es-ES" : "en-US";
+  const refreshLock = useRef(false);
 
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
   const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
@@ -42,13 +56,19 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
     loading: currencyLoading,
   } = useCurrency();
 
+  const {
+    price: btcPrice,
+    loading: btcPriceLoading,
+    error: btcPriceError,
+    refresh: refreshBtcPrice,
+  } = useBtcPrice(selectedCurrency);
+
   const [displayUnit, setDisplayUnit] = useState<"sats" | "fiat" | "btc">(
     "sats"
   );
 
   const fetchAllData = useCallback(async () => {
     try {
-      console.log("Fetching all data...");
       const [accountData, transData] = await Promise.all([
         apiCall("/accounts/account"),
         apiCall(
@@ -59,36 +79,22 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
           }&to=${new Date().toISOString().split("T")[0]}`
         ),
       ]);
-      console.log("Data fetched successfully:", { accountData, transData });
       setAccount(accountData);
       setTransactions(transData.transactions || []);
+      setError("");
     } catch (err: any) {
-      console.error("Failed to fetch data:", err);
       setError(t("Failed to fetch data: {error}", { error: err.message }));
     }
   }, [t]);
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        if (isSettingsModalOpen) {
-          setIsSettingsModalOpen(false);
-        }
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isSettingsModalOpen]);
-
   const handleRefresh = async () => {
-    if (isRefreshing) return;
+    if (isRefreshing || refreshLock.current) return;
+    refreshLock.current = true;
 
     const startTime = Date.now();
     setIsRefreshing(true);
 
-    await fetchAllData();
+    await Promise.all([fetchAllData(), refreshBtcPrice()]);
 
     const elapsedTime = Date.now() - startTime;
     const animationDuration = 1500;
@@ -96,6 +102,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
 
     setTimeout(() => {
       setIsRefreshing(false);
+      refreshLock.current = false;
     }, remainingTime);
   };
 
@@ -106,20 +113,16 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
     const balanceInSats = account.balance;
     switch (displayUnit) {
       case "sats":
-        return `${balanceInSats.toLocaleString()}`;
+        return formatSats(balanceInSats, locale);
       case "btc":
-        return `${(balanceInSats / 100_000_000).toFixed(8)}`;
-      case "fiat":
+        return formatBtc(balanceInSats);
+      case "fiat": {
         const fiatValue = account.fiat_equivalents[selectedCurrency];
         if (fiatValue === undefined) return "N/A";
-        return `${fiatValue.toLocaleString(undefined, {
-          style: "decimal",
-          currency: selectedCurrency,
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}`;
+        return formatFiatAmount(fiatValue, locale);
+      }
       default:
-        return `${balanceInSats.toLocaleString()}`;
+        return formatSats(balanceInSats, locale);
     }
   };
 
@@ -148,22 +151,41 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
       : displayUnit;
   };
 
-  const toggleBalanceVisibility = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const toggleBalanceVisibility = () => {
     const newVisibility = !balanceVisible;
     setBalanceVisible(newVisibility);
     localStorage.setItem("balanceVisible", JSON.stringify(newVisibility));
   };
 
+  const addNotificationRef = useRef(addNotification);
+  const fetchAllDataRef = useRef(fetchAllData);
+  const refreshBtcPriceRef = useRef(refreshBtcPrice);
+  const tRef = useRef(t);
+
+  useEffect(() => {
+    addNotificationRef.current = addNotification;
+  }, [addNotification]);
+
+  useEffect(() => {
+    fetchAllDataRef.current = fetchAllData;
+  }, [fetchAllData]);
+
+  useEffect(() => {
+    refreshBtcPriceRef.current = refreshBtcPrice;
+  }, [refreshBtcPrice]);
+
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
+
   useEffect(() => {
     const token = localStorage.getItem("aratiri_accessToken");
     if (!token) return;
 
-    let ws: any;
-    let reconnectTimeout: any;
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | undefined;
 
     const connectWebSocket = () => {
-      console.log("Connecting to WebSocket...");
       const wsUrl = `${API_BASE_URL.replace(
         "http",
         "ws"
@@ -171,68 +193,53 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
       ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        console.log("WebSocket connection established");
         if (reconnectTimeout) {
           clearTimeout(reconnectTimeout);
         }
       };
 
-      ws.onmessage = (event: any) => {
-        console.log("Raw WebSocket message:", event.data);
-
+      ws.onmessage = (event: MessageEvent) => {
         try {
           const message = JSON.parse(event.data);
           const eventType = message.event;
           const eventData = message.data;
 
-          console.log("Parsed event type:", eventType, "data:", eventData);
-
           if (eventType === "payment_received" && eventData) {
             const amountSats = eventData.amountSats || 0;
-            const memo = eventData.memo || t("No description");
+            const memo = eventData.memo || tRef.current("No description");
 
-            addNotification(
-              t("Payment Received"),
+            addNotificationRef.current(
+              tRef.current("Payment Received"),
               `${amountSats.toLocaleString()} sats - ${memo}`,
               "success"
             );
 
-            fetchAllData();
+            void fetchAllDataRef.current();
+            void refreshBtcPriceRef.current();
           } else if (eventType === "payment_sent") {
-            console.log("Payment sent event received, refreshing data...");
-            fetchAllData();
-          } else if (eventType === "connected") {
-            console.log("Connected to WebSocket:", eventData);
+            void fetchAllDataRef.current();
+            void refreshBtcPriceRef.current();
           }
-        } catch (parseError) {
-          console.error(
-            "Failed to parse WebSocket message:",
-            parseError,
-            "Raw data:",
-            event.data
-          );
+        } catch {
+          // Ignore malformed notification payloads
         }
       };
 
-      ws.onclose = (event: any) => {
-        console.log("WebSocket connection closed:", event.reason);
+      ws.onclose = (event: CloseEvent) => {
         if (!event.wasClean) {
           reconnectTimeout = setTimeout(() => {
-            console.log("Attempting to reconnect WebSocket...");
             connectWebSocket();
           }, 5000);
         }
       };
 
-      ws.onerror = (error: any) => {
-        console.error("WebSocket error:", error);
-        ws.close();
+      ws.onerror = () => {
+        ws?.close();
       };
     };
 
     connectWebSocket();
     return () => {
-      console.log("Cleaning up WebSocket connection");
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
       }
@@ -241,7 +248,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
         ws.close();
       }
     };
-  }, [addNotification, fetchAllData]);
+  }, []);
 
   useEffect(() => {
     const storedVisibility = localStorage.getItem("balanceVisible");
@@ -260,11 +267,8 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
           body: JSON.stringify({ refreshToken }),
         });
       }
-    } catch (error) {
-      console.error(
-        "Logout failed on server, clearing client session anyway:",
-        error
-      );
+    } catch {
+      // Clear client session regardless of server logout result
     } finally {
       localStorage.removeItem("aratiri_accessToken");
       localStorage.removeItem("aratiri_refreshToken");
@@ -273,24 +277,36 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
     }
   };
 
+  const showSpotPrice =
+    isClient &&
+    balanceVisible &&
+    (displayUnit === "sats" || displayUnit === "btc") &&
+    !btcPriceError;
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
-        <Zap className="w-16 h-16 text-yellow-400 animate-spin" />
+      <div
+        className="min-h-dvh bg-background flex items-center justify-center text-foreground"
+        role="status"
+        aria-live="polite"
+        aria-label={t("Loading wallet")}
+      >
+        <Zap className="w-12 h-12 text-accent animate-calm-busy" aria-hidden="true" />
       </div>
     );
   }
 
   const isBalanceVisible = isClient && balanceVisible;
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white font-sans flex flex-col">
-      {/* Modals */}
+    <div className="min-h-dvh bg-background text-foreground font-sans flex flex-col">
       {isSendModalOpen && (
         <SendModal
           onClose={() => setIsSendModalOpen(false)}
           onPaymentSent={() => {
             setIsSendModalOpen(false);
-            fetchAllData();
+            void fetchAllData();
+            void refreshBtcPrice();
           }}
         />
       )}
@@ -301,122 +317,145 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
         />
       )}
       {isSettingsModalOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 animate-fade-in">
-          <div className="bg-gray-800 p-6 rounded-2xl w-full max-w-md m-4 border border-yellow-500/20 relative">
-            <button
-              onClick={() => setIsSettingsModalOpen(false)}
-              className="absolute top-2 right-2 p-2 text-gray-400 hover:text-white"
-            >
-              <X />
-            </button>
-            <SettingsTab
-              selectedCurrency={selectedCurrency}
-              setSelectedCurrency={setSelectedCurrency}
-              availableCurrencies={availableCurrencies}
-              loading={currencyLoading}
-            />
-          </div>
-        </div>
+        <Modal
+          title={t("Settings")}
+          onClose={() => setIsSettingsModalOpen(false)}
+          labelledBy="settings-title"
+        >
+          <SettingsTab
+            selectedCurrency={selectedCurrency}
+            setSelectedCurrency={setSelectedCurrency}
+            availableCurrencies={availableCurrencies}
+            loading={currencyLoading}
+          />
+        </Modal>
       )}
 
-      {/* Notifications */}
-      <div className="fixed top-5 right-5 z-50 space-y-3 w-full max-w-sm">
+      <div className="fixed top-4 inset-x-4 sm:inset-x-auto sm:right-5 sm:left-auto z-50 space-y-3 w-auto sm:w-full sm:max-w-sm pointer-events-none sm:pointer-events-auto">
         {notifications.map((n) => (
-          <NotificationToast
-            key={n.id}
-            notification={n}
-            onClose={removeNotification}
-          />
+          <div key={n.id} className="pointer-events-auto">
+            <NotificationToast
+              notification={n}
+              onClose={removeNotification}
+            />
+          </div>
         ))}
       </div>
 
-      {/* Header */}
-      <header className="bg-gray-800/50 backdrop-blur-sm border-b border-yellow-500/20 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <header className="bg-panel border-b border-panel-edge sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <div className="flex justify-between items-center h-16">
-            <div
-              className="flex items-center space-x-3 cursor-pointer"
-              onClick={handleRefresh}
-            >
-              <Zap
-                className={`w-8 h-8 text-yellow-400 ${
-                  isRefreshing ? "animate-spin-smooth" : ""
-                }`}
+            <div className="flex items-center gap-1">
+              <RefreshZapButton
+                isRefreshing={isRefreshing}
+                onRefresh={handleRefresh}
+                label={t("Refresh wallet data")}
+                busyLabel={t("Refreshing wallet data")}
               />
-              <h1 className="text-xl font-bold">Aratiri</h1>
+              <span
+                data-testid="brand-wordmark"
+                className="text-xl font-semibold tracking-tight select-none"
+              >
+                Aratiri
+              </span>
             </div>
-            <div className="flex items-center space-x-4">
-              <button
+            <div className="flex items-center gap-1">
+              <IconButton
+                label={t("Settings")}
                 onClick={() => setIsSettingsModalOpen(true)}
-                className="text-gray-400 hover:text-white transition-colors"
               >
-                <Settings className="w-6 h-6" />
-              </button>
-              <button
-                onClick={logout}
-                className="flex items-center text-gray-400 hover:text-white transition-colors"
-              >
-                <LogOut className="w-6 h-6" />
-              </button>
+                <Settings className="w-5 h-5" aria-hidden="true" />
+              </IconButton>
+              <IconButton label={t("Log out")} onClick={logout}>
+                <LogOut className="w-5 h-5" aria-hidden="true" />
+              </IconButton>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-grow max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-grow max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {error && (
-          <div className="bg-red-500/20 border border-red-500 text-red-300 px-4 py-3 rounded-lg mb-6">
+          <Alert variant="danger" className="mb-6">
             {error}
-          </div>
+          </Alert>
         )}
 
-        {/* Balance Section */}
-        <div className="text-center mb-8">
-          <div
-            className="flex justify-center items-center space-x-2 cursor-pointer"
-            onClick={toggleDisplayUnit}
-          >
-            <h2 className="text-5xl font-bold tracking-tighter">
+        <section className="text-center mb-8" aria-labelledby="balance-heading">
+          <h2 id="balance-heading" className="sr-only">
+            {t("Balance")}
+          </h2>
+          <div className="flex justify-center items-center gap-2 flex-wrap">
+            <p className="text-4xl sm:text-5xl font-semibold tracking-tighter font-amount">
               {formatBalance()}
-            </h2>
-            <span className="text-2xl text-gray-400 font-light">
-              {getDisplayUnitLabel()}
-            </span>
-            <button
+            </p>
+            {isBalanceVisible && (
+              <button
+                type="button"
+                onClick={toggleDisplayUnit}
+                aria-label={t("Change display unit. Current unit: {unit}", {
+                  unit: getDisplayUnitLabel(),
+                })}
+                className="inline-flex items-center justify-center text-xl sm:text-2xl text-muted font-light min-h-11 min-w-11 px-2 rounded-lg hover:text-foreground hover:bg-panel-elevated transition-colors"
+              >
+                {getDisplayUnitLabel()}
+              </button>
+            )}
+            <IconButton
+              label={
+                isBalanceVisible ? t("Hide balance") : t("Show balance")
+              }
               onClick={toggleBalanceVisibility}
-              className="text-gray-400 hover:text-white"
             >
-              {isBalanceVisible ? <Eye size={24} /> : <EyeOff size={24} />}
-            </button>
+              {isBalanceVisible ? (
+                <Eye size={22} aria-hidden="true" />
+              ) : (
+                <EyeOff size={22} aria-hidden="true" />
+              )}
+            </IconButton>
           </div>
-        </div>
+          {showSpotPrice && (
+            <p
+              className="mt-2 text-sm text-muted font-amount min-h-5"
+              aria-live="polite"
+            >
+              {btcPriceLoading && !btcPrice ? (
+                <span className="inline-block w-40 h-3 rounded bg-panel-elevated align-middle" />
+              ) : btcPrice ? (
+                t("1 BTC ≈ {price}", {
+                  price: formatFiat(btcPrice.price, btcPrice.currency, locale),
+                })
+              ) : (
+                <span className="text-muted">—</span>
+              )}
+            </p>
+          )}
+        </section>
 
-        {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-8">
           <button
+            type="button"
             onClick={() => setIsReceiveModalOpen(true)}
-            className="bg-green-500/20 text-green-300 font-bold py-4 px-4 rounded-lg hover:bg-green-500/30 transition flex items-center justify-center space-x-2 text-lg"
+            className="min-h-12 bg-success-bg text-success font-semibold py-3 px-4 rounded-lg border border-success/30 hover:bg-success/20 transition flex items-center justify-center gap-2 text-base sm:text-lg touch-manipulation"
           >
-            <ArrowLeft />
+            <ArrowLeft aria-hidden="true" />
             <span>{t("Receive")}</span>
           </button>
           <button
+            type="button"
             onClick={() => setIsSendModalOpen(true)}
-            className="bg-yellow-400/20 text-yellow-300 font-bold py-4 px-4 rounded-lg hover:bg-yellow-400/30 transition flex items-center justify-center space-x-2 text-lg"
+            className="min-h-12 bg-accent-subtle text-accent font-semibold py-3 px-4 rounded-lg border border-accent/30 hover:bg-accent/25 transition flex items-center justify-center gap-2 text-base sm:text-lg touch-manipulation"
           >
             <span>{t("Send")}</span>
-            <ArrowRight />
+            <ArrowRight aria-hidden="true" />
           </button>
         </div>
 
-        {/* Transactions List */}
         <TransactionsTab
           transactions={transactions}
           currency={selectedCurrency}
           balanceVisible={balanceVisible}
           displayUnit={displayUnit}
-          onUnitToggle={toggleDisplayUnit}
         />
       </main>
     </div>

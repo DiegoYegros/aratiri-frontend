@@ -1,6 +1,6 @@
 "use client";
-import { ArrowLeft, Bitcoin, Edit, QrCode, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ArrowLeft, Bitcoin, Edit, QrCode } from "lucide-react";
+import { useState } from "react";
 import {
   apiCall,
   DecodedInvoice,
@@ -10,11 +10,17 @@ import {
 } from "../../lib/api";
 import { QrScanner } from "./QrScanner";
 import { useTranslation } from "@/app/hooks/useTranslation";
+import { Modal } from "../ui/Modal";
+import { IconButton } from "../ui/IconButton";
+import { Alert } from "../ui/Alert";
 
 interface SendModalProps {
   onClose: () => void;
   onPaymentSent: () => void;
 }
+
+const fieldClass =
+  "w-full pl-10 pr-4 py-3 bg-input border border-panel-edge rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent text-foreground";
 
 export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
   const [inputValue, setInputValue] = useState("");
@@ -29,18 +35,6 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
   const [fee, setFee] = useState<EstimateFeeResponse | null>(null);
   const [showFee, setShowFee] = useState(false);
   const t = useTranslation();
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [onClose]);
 
   const handleKeyDown = (
     event: React.KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>
@@ -166,7 +160,9 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
         throw new Error(t("Payment type not supported yet."));
       }
 
-      setSuccess(t("Payment initiated! Status: {status}.", { status: data.status }));
+      setSuccess(
+        t("Payment initiated! Status: {status}.", { status: data.status })
+      );
       setInputValue("");
       setDecoded(null);
       setTimeout(() => {
@@ -185,27 +181,33 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
     setSuccess("");
   };
 
+  const primaryBtn =
+    "w-full min-h-11 bg-accent text-accent-fg font-semibold py-3 px-4 rounded-lg hover:bg-accent-hover disabled:opacity-50 transition";
+
   const renderDecodedContent = () => {
     if (!decoded || !decoded.data) return null;
 
     switch (decoded.type) {
-      case "lightning_invoice":
+      case "lightning_invoice": {
         const invoice = decoded.data as DecodedInvoice;
         return (
-          <div className="mt-6 bg-gray-900/50 p-4 rounded-lg space-y-3 animate-fade-in">
-            <h3 className="font-bold text-lg">{t("Invoice Details")}</h3>
+          <div className="mt-6 bg-input border border-panel-edge p-4 rounded-lg space-y-3 animate-fade-in">
+            <h3 className="font-semibold text-lg">{t("Invoice Details")}</h3>
             <div>
-              <span className="font-semibold text-gray-400">{t("Amount:")}</span>{" "}
-              {invoice.num_satoshis.toLocaleString()} sats
+              <span className="font-medium text-muted">{t("Amount:")}</span>{" "}
+              <span className="font-amount">
+                {invoice.num_satoshis.toLocaleString()} sats
+              </span>
             </div>
             <div className="truncate">
-              <span className="font-semibold text-gray-400">{t("Description:")}</span>{" "}
+              <span className="font-medium text-muted">{t("Description:")}</span>{" "}
               {invoice.description || "N/A"}
             </div>
             <button
+              type="button"
               onClick={handlePay}
               disabled={loading}
-              className="w-full bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 disabled:opacity-50 transition"
+              className={primaryBtn}
             >
               {loading
                 ? t("Paying...")
@@ -215,9 +217,10 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
             </button>
           </div>
         );
+      }
 
       case "alias":
-      case "lnurl_params":
+      case "lnurl_params": {
         const params = decoded.data as LnurlParams;
         const metadata = JSON.parse(params.metadata);
         const description =
@@ -225,14 +228,19 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
           t("LNURL Payment");
 
         return (
-          <div className="mt-6 bg-gray-900/50 p-4 rounded-lg space-y-4 animate-fade-in">
-            <h3 className="font-bold text-lg">{description}</h3>
+          <div className="mt-6 bg-input border border-panel-edge p-4 rounded-lg space-y-4 animate-fade-in">
+            <h3 className="font-semibold text-lg">{description}</h3>
             <div className="relative">
+              <label htmlFor="lnurl-amount" className="sr-only">
+                {t("Amount (sats)")}
+              </label>
               <Bitcoin
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
                 size={20}
+                aria-hidden="true"
               />
               <input
+                id="lnurl-amount"
                 type="number"
                 value={lnurlAmount}
                 onChange={(e) => setLnurlAmount(e.target.value)}
@@ -241,16 +249,23 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
                   min: (params.minSendable / 1000).toLocaleString(),
                   max: (params.maxSendable / 1000).toLocaleString(),
                 })}
-                className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+                className={fieldClass}
               />
             </div>
             {params.commentAllowed && params.commentAllowed > 0 && (
               <div className="relative">
+                <label htmlFor="lnurl-comment" className="sr-only">
+                  {t("Comment (optional, max {count} chars)", {
+                    count: params.commentAllowed,
+                  })}
+                </label>
                 <Edit
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
                   size={20}
+                  aria-hidden="true"
                 />
                 <input
+                  id="lnurl-comment"
                   type="text"
                   value={lnurlComment}
                   onChange={(e) => setLnurlComment(e.target.value)}
@@ -259,46 +274,53 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
                     count: params.commentAllowed,
                   })}
                   maxLength={params.commentAllowed}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  className={fieldClass}
                 />
               </div>
             )}
             <button
+              type="button"
               onClick={handlePay}
               disabled={loading || !lnurlAmount}
-              className="w-full bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 disabled:opacity-50 transition"
+              className={primaryBtn}
             >
               {loading ? t("Processing...") : t("Pay")}
             </button>
           </div>
         );
+      }
 
       case "bitcoin_address":
         return (
-          <div className="mt-6 bg-gray-900/50 p-4 rounded-lg space-y-4 animate-fade-in">
+          <div className="mt-6 bg-input border border-panel-edge p-4 rounded-lg space-y-4 animate-fade-in">
             <div className="relative">
+              <label htmlFor="onchain-amount" className="sr-only">
+                {t("Amount (sats)")}
+              </label>
               <Bitcoin
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
                 size={20}
+                aria-hidden="true"
               />
               <input
+                id="onchain-amount"
                 type="number"
                 value={onChainAmount}
                 onChange={(e) => setOnChainAmount(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={t("Amount (sats)")}
-                className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+                className={fieldClass}
                 disabled={showFee}
               />
             </div>
             {showFee && fee ? (
-              <div className="text-center">
-                <p>
+              <div className="text-center space-y-1">
+                <p className="font-amount">
                   {t("Fee: {fee} sats", {
                     fee: fee.fee_sat.toLocaleString(),
                   })}
                 </p>
-                <p>
+                <p className="font-amount">
                   {t("Total: {total} sats", {
                     total: (
                       parseInt(onChainAmount) + fee.fee_sat
@@ -306,18 +328,20 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
                   })}
                 </p>
                 <button
+                  type="button"
                   onClick={handlePay}
                   disabled={loading}
-                  className="w-full mt-4 bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 disabled:opacity-50 transition"
+                  className={`${primaryBtn} mt-4`}
                 >
                   {loading ? t("Sending...") : t("Confirm and Send")}
                 </button>
               </div>
             ) : (
               <button
+                type="button"
                 onClick={handleEstimateFee}
                 disabled={loading || !onChainAmount}
-                className="w-full bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 disabled:opacity-50 transition"
+                className={primaryBtn}
               >
                 {loading ? t("Estimating Fee...") : t("Continue")}
               </button>
@@ -340,65 +364,63 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 animate-fade-in">
-      <div className="bg-gray-800 p-6 rounded-2xl w-full max-w-md m-4 border border-yellow-500/20">
-        <div className="flex justify-between items-center mb-6">
-          {decoded ? (
+    <Modal
+      title={decoded ? t("Details") : t("Send Payment")}
+      onClose={onClose}
+      labelledBy="send-modal-title"
+      leading={
+        decoded ? (
+          <IconButton label={t("Back")} onClick={handleBack}>
+            <ArrowLeft className="w-5 h-5" aria-hidden="true" />
+          </IconButton>
+        ) : undefined
+      }
+    >
+      {!decoded && (
+        <div className="space-y-4">
+          <label htmlFor="send-input" className="sr-only">
+            {t("Paste Invoice, LNURL, Address, or Alias")}
+          </label>
+          <textarea
+            id="send-input"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={t("Paste Invoice, LNURL, Address, or Alias")}
+            className="w-full h-32 px-4 py-3 bg-input border border-panel-edge rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent font-mono text-sm"
+          />
+          <div className="flex gap-2">
             <button
-              onClick={handleBack}
-              className="p-2 text-gray-400 hover:text-white"
+              type="button"
+              onClick={() => handleDecode(inputValue)}
+              disabled={loading || !inputValue}
+              className="flex-grow min-h-11 bg-panel-elevated border border-panel-edge text-foreground font-semibold py-3 px-4 rounded-lg hover:bg-input disabled:opacity-50 transition"
             >
-              <ArrowLeft />
+              {loading ? t("Decoding...") : t("Decode")}
             </button>
-          ) : (
-            <div className="w-8" />
-          )}
-          <h2 className="text-2xl font-bold">
-            {decoded ? t("Details") : t("Send Payment")}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-white"
-          >
-            <X />
-          </button>
-        </div>
-
-        {!decoded && (
-          <div className="space-y-4">
-            <textarea
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={t("Paste Invoice, LNURL, Address, or Alias")}
-              className="w-full h-32 px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 font-mono text-sm"
-            />
-            <div className="flex space-x-2">
-              <button
-                onClick={() => handleDecode(inputValue)}
-                disabled={loading || !inputValue}
-                className="flex-grow bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-500 disabled:opacity-50 transition"
-              >
-                {loading ? t("Decoding...") : t("Decode")}
-              </button>
-              <button
-                onClick={() => setIsScanning(true)}
-                className="bg-gray-600 text-white p-3 rounded-lg hover:bg-gray-500 disabled:opacity-50 transition"
-                title={t("Scan QR Code")}
-              >
-                <QrCode />
-              </button>
-            </div>
+            <IconButton
+              label={t("Scan QR Code")}
+              onClick={() => setIsScanning(true)}
+              className="border border-panel-edge bg-panel-elevated hover:bg-input"
+            >
+              <QrCode className="w-5 h-5" aria-hidden="true" />
+            </IconButton>
           </div>
-        )}
+        </div>
+      )}
 
-        {error && <div className="text-red-400 text-center mt-4">{error}</div>}
-        {success && (
-          <div className="text-green-400 text-center mt-4">{success}</div>
-        )}
+      {error && (
+        <Alert variant="danger" className="mt-4">
+          {error}
+        </Alert>
+      )}
+      {success && (
+        <Alert variant="success" className="mt-4">
+          {success}
+        </Alert>
+      )}
 
-        {renderDecodedContent()}
-      </div>
-    </div>
+      {renderDecodedContent()}
+    </Modal>
   );
 };

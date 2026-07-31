@@ -1,9 +1,13 @@
 "use client";
-import { Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiCall } from "../../lib/api";
 import GoogleLogin from "./GoogleLogin";
 import { useTranslation } from "@/app/hooks/useTranslation";
+import { AuthShell } from "../ui/AuthShell";
+import { Alert } from "../ui/Alert";
+
+const fieldClass =
+  "w-full px-4 py-3 bg-input border border-panel-edge rounded-lg text-foreground placeholder:text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent transition touch-manipulation";
 
 export const LoginScreen = ({
   setToken,
@@ -75,77 +79,80 @@ export const LoginScreen = ({
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4 font-sans">
-      <div className="w-full max-w-md bg-gray-800 rounded-2xl shadow-lg p-8 space-y-6 border border-yellow-500/20">
-        <div className="text-center">
-          <Zap className="w-16 h-16 text-yellow-400 mx-auto mb-4 animate-pulse" />
-          <h1 className="text-4xl font-bold">Aratiri</h1>
-          <p className="text-gray-400">{t("Bitcoin Lightning Wallet")}</p>
-        </div>
+    <AuthShell subtitle={t("Bitcoin Lightning Wallet")}>
+      {error && <Alert variant="danger">{error}</Alert>}
 
-        {error && (
-          <div className="bg-yellow-500/20 border border-yellow-500 text-yellow-300 px-4 py-3 rounded-lg text-center">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleLogin} className="space-y-4">
+      <form onSubmit={handleLogin} className="space-y-4">
+        <div className="space-y-1.5">
+          <label htmlFor="login-username" className="block text-sm text-muted-strong">
+            {t("Username")}
+          </label>
           <input
+            id="login-username"
+            name="username"
             type="text"
+            autoComplete="username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder={t("Username")}
-            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
+            className={fieldClass}
             required
           />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="login-password" className="block text-sm text-muted-strong">
+            {t("Password")}
+          </label>
           <input
+            id="login-password"
+            name="password"
             type="password"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder={t("Password")}
-            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
+            className={fieldClass}
             required
           />
-          <div className="text-right">
-            <button
-              type="button"
-              onClick={() => setShowForgotPassword(true)}
-              className="text-sm text-yellow-400 hover:text-yellow-300"
-            >
-              {t("Forgot Password?")}
-            </button>
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-yellow-400 text-gray-900 font-bold py-3 px-4 rounded-lg hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50 transition"
-          >
-            {loading ? t("Signing In...") : t("Sign In")}
-          </button>
-        </form>
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-600" />
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="bg-gray-800 px-2 text-gray-500">{t("OR")}</span>
-          </div>
         </div>
-
-        <GoogleLogin
-          onSuccess={handleGoogleSuccess}
-          onError={(errorMsg) => setError(errorMsg)}
-        />
-        <div className="text-center">
+        <div className="text-right">
           <button
-            onClick={() => setShowRegister(true)}
-            className="text-yellow-400 hover:text-yellow-300"
+            type="button"
+            onClick={() => setShowForgotPassword(true)}
+            className="text-sm text-accent hover:text-accent-hover min-h-11 inline-flex items-center"
           >
-            {t("Create new account")}
+            {t("Forgot Password?")}
           </button>
+        </div>
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full min-h-11 bg-accent text-accent-fg font-semibold py-3 px-4 rounded-lg hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50 transition touch-manipulation"
+        >
+          {loading ? t("Signing In...") : t("Sign In")}
+        </button>
+      </form>
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-panel-edge" />
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="bg-panel px-2 text-muted">{t("OR")}</span>
         </div>
       </div>
-    </div>
+
+      <GoogleLogin
+        onSuccess={handleGoogleSuccess}
+        onError={(errorMsg) => setError(errorMsg)}
+      />
+      <div className="text-center">
+        <button
+          type="button"
+          onClick={() => setShowRegister(true)}
+          className="text-accent hover:text-accent-hover min-h-11 inline-flex items-center"
+        >
+          {t("Create new account")}
+        </button>
+      </div>
+    </AuthShell>
   );
 };
