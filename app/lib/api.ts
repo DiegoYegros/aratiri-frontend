@@ -78,8 +78,57 @@ export interface Notification {
   type: "success" | "error";
 }
 
+/** Owner / public payment-request DTO (snake_case from API). */
+export interface PaymentRequest {
+  public_id: string;
+  share_url: string;
+  amount_sats: number;
+  memo: string | null;
+  status: string;
+  payment_request: string | null;
+  created_at: string;
+  expires_at: string | null;
+  paid_at: string | null;
+  cancelled_at: string | null;
+}
+
+export interface PaymentRequestListResponse {
+  payment_requests: PaymentRequest[];
+  next_cursor: string | null;
+  has_more: boolean;
+}
+
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://aratiri.diegoyegros.com/v1";
+
+/** Derive backend root by removing a trailing `/v1` only. */
+export const getBackendRootUrl = (apiBaseUrl: string = API_BASE_URL): string =>
+  apiBaseUrl.replace(/\/v1\/?$/, "");
+
+/**
+ * Public payment-request fetch at backend-root `/r/{publicId}`.
+ * Does not use apiCall (avoids attaching Authorization).
+ */
+export const fetchPublicPaymentRequest = async (
+  publicId: string
+): Promise<PaymentRequest> => {
+  const response = await fetch(
+    `${getBackendRootUrl()}/r/${encodeURIComponent(publicId)}`
+  );
+
+  if (!response.ok) {
+    const errorData = await response
+      .json()
+      .catch(() => ({ message: "An unknown error occurred." }));
+    const error = new Error(
+      errorData.message || `HTTP Error: ${response.status}`
+    ) as Error & { status?: number };
+    error.status = response.status;
+    throw error;
+  }
+
+  return response.json();
+};
 
 let isRefreshing = false;
 let failedQueue: any[] = [];

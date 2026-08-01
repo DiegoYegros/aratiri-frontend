@@ -27,9 +27,12 @@ import { ReceiveModal } from "./ReceiveModal";
 import { SendModal } from "./SendModal";
 import { SettingsTab } from "./SettingsTab";
 import { TransactionsTab } from "./TransactionsTab";
+import { RequestCenter } from "./RequestCenter";
 import { RefreshZapButton } from "./RefreshZapButton";
 import { useTranslation } from "@/app/hooks/useTranslation";
 import { useLanguage } from "@/app/LanguageProvider";
+
+type DashboardView = "wallet" | "requests";
 
 export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
   const [account, setAccount] = useState<Account | null>(null);
@@ -40,14 +43,23 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
   const { notifications, addNotification, removeNotification } = useNotifier();
   const [balanceVisible, setBalanceVisible] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [activeView, setActiveView] = useState<DashboardView>("wallet");
   const t = useTranslation();
   const { language } = useLanguage();
   const locale = language === "es" ? "es-ES" : "en-US";
   const refreshLock = useRef(false);
+  const requestsRefreshRef = useRef<(() => Promise<void>) | null>(null);
 
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
   const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+
+  const registerRequestsRefresh = useCallback(
+    (fn: (() => Promise<void>) | null) => {
+      requestsRefreshRef.current = fn;
+    },
+    []
+  );
 
   const {
     selectedCurrency,
@@ -94,7 +106,11 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
     const startTime = Date.now();
     setIsRefreshing(true);
 
-    await Promise.all([fetchAllData(), refreshBtcPrice()]);
+    await Promise.all([
+      fetchAllData(),
+      refreshBtcPrice(),
+      requestsRefreshRef.current?.() ?? Promise.resolve(),
+    ]);
 
     const elapsedTime = Date.now() - startTime;
     const animationDuration = 1500;
@@ -216,9 +232,11 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
 
             void fetchAllDataRef.current();
             void refreshBtcPriceRef.current();
+            void requestsRefreshRef.current?.();
           } else if (eventType === "payment_sent") {
             void fetchAllDataRef.current();
             void refreshBtcPriceRef.current();
+            void requestsRefreshRef.current?.();
           }
         } catch {
           // Ignore malformed notification payloads
@@ -374,89 +392,138 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
         </div>
       </header>
 
+      <nav
+        className="border-b border-panel-edge bg-panel"
+        aria-label={t("Dashboard sections")}
+      >
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 flex gap-1">
+          <button
+            type="button"
+            onClick={() => setActiveView("wallet")}
+            aria-current={activeView === "wallet" ? "page" : undefined}
+            className={`min-h-11 px-4 text-sm font-semibold border-b-2 transition-colors touch-manipulation ${
+              activeView === "wallet"
+                ? "border-accent text-foreground"
+                : "border-transparent text-muted hover:text-foreground"
+            }`}
+          >
+            {t("Wallet")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView("requests")}
+            aria-current={activeView === "requests" ? "page" : undefined}
+            className={`min-h-11 px-4 text-sm font-semibold border-b-2 transition-colors touch-manipulation ${
+              activeView === "requests"
+                ? "border-accent text-foreground"
+                : "border-transparent text-muted hover:text-foreground"
+            }`}
+          >
+            {t("Requests")}
+          </button>
+        </div>
+      </nav>
+
       <main className="flex-grow max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        {error && (
+        {error && activeView === "wallet" && (
           <Alert variant="danger" className="mb-6">
             {error}
           </Alert>
         )}
 
-        <section className="text-center mb-8" aria-labelledby="balance-heading">
-          <h2 id="balance-heading" className="sr-only">
-            {t("Balance")}
-          </h2>
-          <div className="flex justify-center items-center gap-2 flex-wrap">
-            <p className="text-4xl sm:text-5xl font-semibold tracking-tighter font-amount">
-              {formatBalance()}
-            </p>
-            {isBalanceVisible && (
+        {activeView === "wallet" ? (
+          <>
+            <section
+              className="text-center mb-8"
+              aria-labelledby="balance-heading"
+            >
+              <h2 id="balance-heading" className="sr-only">
+                {t("Balance")}
+              </h2>
+              <div className="flex justify-center items-center gap-2 flex-wrap">
+                <p className="text-4xl sm:text-5xl font-semibold tracking-tighter font-amount">
+                  {formatBalance()}
+                </p>
+                {isBalanceVisible && (
+                  <button
+                    type="button"
+                    onClick={toggleDisplayUnit}
+                    aria-label={t("Change display unit. Current unit: {unit}", {
+                      unit: getDisplayUnitLabel(),
+                    })}
+                    className="inline-flex items-center justify-center text-xl sm:text-2xl text-muted font-light min-h-11 min-w-11 px-2 rounded-lg hover:text-foreground hover:bg-panel-elevated transition-colors"
+                  >
+                    {getDisplayUnitLabel()}
+                  </button>
+                )}
+                <IconButton
+                  label={
+                    isBalanceVisible ? t("Hide balance") : t("Show balance")
+                  }
+                  onClick={toggleBalanceVisibility}
+                >
+                  {isBalanceVisible ? (
+                    <Eye size={22} aria-hidden="true" />
+                  ) : (
+                    <EyeOff size={22} aria-hidden="true" />
+                  )}
+                </IconButton>
+              </div>
+              {showSpotPrice && (
+                <p
+                  className="mt-2 text-sm text-muted font-amount min-h-5"
+                  aria-live="polite"
+                >
+                  {btcPriceLoading && !btcPrice ? (
+                    <span className="inline-block w-40 h-3 rounded bg-panel-elevated align-middle" />
+                  ) : btcPrice ? (
+                    t("1 BTC ≈ {price}", {
+                      price: formatFiat(
+                        btcPrice.price,
+                        btcPrice.currency,
+                        locale
+                      ),
+                    })
+                  ) : (
+                    <span className="text-muted">—</span>
+                  )}
+                </p>
+              )}
+            </section>
+
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-8">
               <button
                 type="button"
-                onClick={toggleDisplayUnit}
-                aria-label={t("Change display unit. Current unit: {unit}", {
-                  unit: getDisplayUnitLabel(),
-                })}
-                className="inline-flex items-center justify-center text-xl sm:text-2xl text-muted font-light min-h-11 min-w-11 px-2 rounded-lg hover:text-foreground hover:bg-panel-elevated transition-colors"
+                onClick={() => setIsReceiveModalOpen(true)}
+                className="min-h-12 bg-success-bg text-success font-semibold py-3 px-4 rounded-lg border border-success/30 hover:bg-success/20 transition flex items-center justify-center gap-2 text-base sm:text-lg touch-manipulation"
               >
-                {getDisplayUnitLabel()}
+                <ArrowLeft aria-hidden="true" />
+                <span>{t("Receive")}</span>
               </button>
-            )}
-            <IconButton
-              label={
-                isBalanceVisible ? t("Hide balance") : t("Show balance")
-              }
-              onClick={toggleBalanceVisibility}
-            >
-              {isBalanceVisible ? (
-                <Eye size={22} aria-hidden="true" />
-              ) : (
-                <EyeOff size={22} aria-hidden="true" />
-              )}
-            </IconButton>
-          </div>
-          {showSpotPrice && (
-            <p
-              className="mt-2 text-sm text-muted font-amount min-h-5"
-              aria-live="polite"
-            >
-              {btcPriceLoading && !btcPrice ? (
-                <span className="inline-block w-40 h-3 rounded bg-panel-elevated align-middle" />
-              ) : btcPrice ? (
-                t("1 BTC ≈ {price}", {
-                  price: formatFiat(btcPrice.price, btcPrice.currency, locale),
-                })
-              ) : (
-                <span className="text-muted">—</span>
-              )}
-            </p>
-          )}
-        </section>
+              <button
+                type="button"
+                onClick={() => setIsSendModalOpen(true)}
+                className="min-h-12 bg-accent-subtle text-accent font-semibold py-3 px-4 rounded-lg border border-accent/30 hover:bg-accent/25 transition flex items-center justify-center gap-2 text-base sm:text-lg touch-manipulation"
+              >
+                <span>{t("Send")}</span>
+                <ArrowRight aria-hidden="true" />
+              </button>
+            </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-8">
-          <button
-            type="button"
-            onClick={() => setIsReceiveModalOpen(true)}
-            className="min-h-12 bg-success-bg text-success font-semibold py-3 px-4 rounded-lg border border-success/30 hover:bg-success/20 transition flex items-center justify-center gap-2 text-base sm:text-lg touch-manipulation"
-          >
-            <ArrowLeft aria-hidden="true" />
-            <span>{t("Receive")}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsSendModalOpen(true)}
-            className="min-h-12 bg-accent-subtle text-accent font-semibold py-3 px-4 rounded-lg border border-accent/30 hover:bg-accent/25 transition flex items-center justify-center gap-2 text-base sm:text-lg touch-manipulation"
-          >
-            <span>{t("Send")}</span>
-            <ArrowRight aria-hidden="true" />
-          </button>
-        </div>
-
-        <TransactionsTab
-          transactions={transactions}
-          currency={selectedCurrency}
-          balanceVisible={balanceVisible}
-          displayUnit={displayUnit}
-        />
+            <TransactionsTab
+              transactions={transactions}
+              currency={selectedCurrency}
+              balanceVisible={balanceVisible}
+              displayUnit={displayUnit}
+            />
+          </>
+        ) : (
+          <RequestCenter
+            balanceVisible={balanceVisible}
+            onToggleBalanceVisibility={toggleBalanceVisibility}
+            registerRefresh={registerRequestsRefresh}
+          />
+        )}
       </main>
     </div>
   );
