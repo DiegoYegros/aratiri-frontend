@@ -139,6 +139,15 @@ describe("SparkProvider lifecycle", () => {
     expect(sdkMocks.createPublic).not.toHaveBeenCalled();
   });
 
+  it("reports not-created for incomplete wallet meta (empty {} / missing identity)", async () => {
+    apiMocks.getSparkWallet.mockResolvedValue({});
+    renderProvider();
+    await waitFor(() => expect(status()).toBe("not-created"));
+    expect(balance()).toBe("null");
+    expect(screen.getByTestId("meta").textContent).toBe("null");
+    expect(sdkMocks.createPublic).not.toHaveBeenCalled();
+  });
+
   it("locked + privacy off: balance served from the readonly client", async () => {
     const readonly = makeReadonly();
     sdkMocks.createPublic.mockReturnValue(readonly);

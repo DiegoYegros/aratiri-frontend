@@ -80,68 +80,17 @@ export const SparkSecurityPanel = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {error && (
-        <Alert variant="danger" className="mb-4">
+        <Alert variant="danger">
           {error}
         </Alert>
       )}
-      {message && <Alert variant="success">{message}</Alert>}
-
-      <div>
-        <p className="text-sm font-semibold mb-1">{t("Backup status")}</p>
-        {meta.backup_verified ? (
-          <Alert variant="success">
-            {t("Backup verified — you have a written copy of your phrase.")}
-          </Alert>
-        ) : (
-          <Alert variant="danger">
-            {t("Not backed up yet. Your phrase has not been verified.")}
-          </Alert>
-        )}
-        {!meta.backup_verified && (
-          <button
-            type="button"
-            onClick={() => void setBackupVerified(true)}
-            className="mt-2 text-sm font-semibold text-accent hover:underline touch-manipulation"
-          >
-            {t("I've written it down — mark as backed up")}
-          </button>
-        )}
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between mb-1">
-          <p className="text-sm font-semibold">{t("Privacy mode")}</p>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={meta.privacy_enabled}
-            aria-label={t("Privacy mode")}
-            onClick={togglePrivacy}
-            disabled={privacyBusy}
-            className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors disabled:opacity-50 ${
-              meta.privacy_enabled ? "bg-accent" : "bg-panel-elevated border border-panel-edge"
-            }`}
-          >
-            <span
-              aria-hidden="true"
-              className={`inline-block h-5 w-5 transform rounded-full bg-foreground transition-transform ${
-                meta.privacy_enabled ? "translate-x-6" : "translate-x-1"
-              }`}
-            />
-          </button>
-        </div>
-        <p className="text-sm text-muted">
-          {meta.privacy_enabled
-            ? t(
-                "Your balance isn't visible to third parties or in the locked view. It shows only after you unlock this wallet."
-              )
-            : t(
-                "When locked, your balance stays readable on this device. Turning privacy on hides it until you unlock."
-              )}
+      {message && (
+        <p className="text-sm text-success" role="status">
+          {message}
         </p>
-      </div>
+      )}
 
       <div>
         <p className="text-sm font-semibold mb-1">{t("Network & account")}</p>
@@ -151,6 +100,63 @@ export const SparkSecurityPanel = () => {
         <p className="text-sm text-muted font-mono break-all mt-1">
           {meta.spark_address}
         </p>
+      </div>
+
+      <div>
+        <p className="text-sm font-semibold mb-1">{t("Backup status")}</p>
+        {meta.backup_verified ? (
+          <p className="text-sm text-success">
+            {t("Backup verified — you have a written copy of your phrase.")}
+          </p>
+        ) : (
+          <>
+            <p className="text-sm text-accent">
+              {t("Not backed up yet. Your phrase has not been verified.")}
+            </p>
+            <button
+              type="button"
+              onClick={() => void setBackupVerified(true)}
+              className="mt-2 min-h-11 px-4 text-sm font-semibold rounded-lg border border-accent/30 bg-accent-subtle text-accent hover:bg-accent/25 transition touch-manipulation"
+            >
+              {t("Mark as backed up")}
+            </button>
+          </>
+        )}
+      </div>
+
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">{t("Privacy mode")}</p>
+          <p className="text-sm text-muted mt-1">
+            {meta.privacy_enabled
+              ? t(
+                  "Your balance isn't visible to third parties or in the locked view. It shows only after you unlock this wallet."
+                )
+              : t(
+                  "When locked, your balance stays readable on this device. Turning privacy on hides it until you unlock."
+                )}
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={meta.privacy_enabled}
+          aria-label={t("Privacy mode")}
+          onClick={togglePrivacy}
+          disabled={privacyBusy}
+          className={`relative shrink-0 inline-flex h-7 w-12 items-center rounded-full transition-colors disabled:opacity-50 ${
+            meta.privacy_enabled
+              ? "bg-accent"
+              : "bg-panel-elevated border border-panel-edge"
+          }`}
+        >
+          <span
+            aria-hidden="true"
+            className={`inline-block h-5 w-5 transform rounded-full bg-foreground transition-transform ${
+              meta.privacy_enabled ? "translate-x-6" : "translate-x-1"
+            }`}
+          />
+        </button>
       </div>
 
       <div>
@@ -165,9 +171,9 @@ export const SparkSecurityPanel = () => {
         </button>
       </div>
 
-      <div className="border border-danger/30 rounded-lg p-4">
-        <p className="text-sm font-semibold text-danger mb-1">
-          {t("Forget this wallet")}
+      <div className="border-t border-panel-edge pt-5">
+        <p className="text-sm font-semibold mb-1">
+          {t("Remove from this device")}
         </p>
         <p className="text-sm text-muted mb-3">
           {t(
@@ -178,7 +184,7 @@ export const SparkSecurityPanel = () => {
           <button
             type="button"
             onClick={() => setForgetMode(true)}
-            className="inline-flex items-center gap-2 min-h-11 px-4 text-sm font-semibold rounded-lg border border-danger/40 text-danger hover:bg-danger/10 transition touch-manipulation"
+            className="inline-flex items-center gap-2 min-h-11 px-4 text-sm font-semibold rounded-lg border border-panel-edge text-muted hover:text-foreground hover:bg-panel-elevated transition touch-manipulation"
           >
             <Trash2 className="w-4 h-4" aria-hidden="true" />
             {t("Forget this wallet")}

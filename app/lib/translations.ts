@@ -213,6 +213,8 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
       "A self-custody Bitcoin wallet. You hold your keys — Aratiri can't recover them, and can't take them.",
     "Amount (sats) — optional, any amount":
       "Amount (sats) — optional, any amount",
+    "Amount must be greater than the fee ({fee} sats) when the fee is deducted from the withdrawal.":
+      "Amount must be greater than the fee ({fee} sats) when the fee is deducted from the withdrawal.",
     "Aratiri holds your keys.": "Aratiri holds your keys.",
     "Backup phrase": "Backup phrase",
     "Backup status": "Backup status",
@@ -238,10 +240,13 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "Create a Spark wallet": "Create a Spark wallet",
     Custodial: "Custodial",
     Deposit: "Deposit",
+    "Deduct fee from withdrawal amount (recipient gets amount minus fee).":
+      "Deduct fee from withdrawal amount (recipient gets amount minus fee).",
     "Deposit Bitcoin": "Deposit Bitcoin",
     "Deposit address": "Deposit address",
     "Don't screenshot. Don't paste into chat. Write it down now.":
       "Don't screenshot. Don't paste into chat. Write it down now.",
+    "Enter an amount in sats.": "Enter an amount in sats.",
     "Each word must be lower-case letters (no spaces or symbols).":
       "Each word must be lower-case letters (no spaces or symbols).",
     "Enter your backup phrase. Words are lower-case letters only.":
@@ -265,8 +270,13 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
       "I've written it down — mark as backed up",
     "Keep your keys with Spark": "Keep your keys with Spark",
     "Lightning invoice": "Lightning invoice",
+    "LNURL callback returned an invalid invoice.":
+      "LNURL callback returned an invalid invoice.",
+    "LNURL invoice amount ({invoice} sats) does not match the amount you entered ({entered} sats).":
+      "LNURL invoice amount ({invoice} sats) does not match the amount you entered ({entered} sats).",
     "Lock wallet": "Lock wallet",
     "Locking...": "Locking...",
+    "Mark as backed up": "Mark as backed up",
     "Maximum fee cap": "Maximum fee cap",
     "My Spark deposit address": "My Spark deposit address",
     "Network & account": "Network & account",
@@ -275,6 +285,10 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
       "Not backed up yet. Your phrase has not been verified.",
     "One permanent address. Its key is shared with the payment operator, so single-use addresses are more private.":
       "One permanent address. Its key is shared with the payment operator, so single-use addresses are more private.",
+    "Paid from your Spark wallet. The invoice is fetched in your browser, then paid with your keys.":
+      "Paid from your Spark wallet. The invoice is fetched in your browser, then paid with your keys.",
+    "Paste Invoice, LNURL, Bitcoin or Spark address, or Alias":
+      "Paste Invoice, LNURL, Bitcoin or Spark address, or Alias",
     "Pick the word at position {position} of your backup phrase.":
       "Pick the word at position {position} of your backup phrase.",
     "Privacy mode": "Privacy mode",
@@ -284,16 +298,23 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
       "Privacy mode on. Your balance is hidden until you unlock this wallet.",
     "Privacy on": "Privacy on",
     "Re-estimate Fee": "Re-estimate Fee",
+    "Remove from this device": "Remove from this device",
     "Restore a Spark wallet": "Restore a Spark wallet",
     "Restore a wallet": "Restore a wallet",
     "Restore this wallet": "Restore this wallet",
+    "Required sats (spend + 10,000-sat bond) exceed your available balance of {available} sats.":
+      "Required sats (spend + 10,000-sat bond) exceed your available balance of {available} sats.",
     "Restoring...": "Restoring...",
     Reusable: "Reusable",
     "Self-custody": "Self-custody",
     "Self-custody wallet": "Self-custody wallet",
+    "Send {amount} sats": "Send {amount} sats",
+    "Send to a Spark wallet — 0 fee, instant.":
+      "Send to a Spark wallet — 0 fee, instant.",
     "Single-use": "Single-use",
     Spark: "Spark",
     "Spark fee (0.25% + routing)": "Spark fee (0.25% + routing)",
+    "Spark transfer": "Spark transfer",
     Taproot: "Taproot",
     "That doesn't look like a valid backup phrase. Check each word.":
       "That doesn't look like a valid backup phrase. Check each word.",
@@ -323,6 +344,10 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "Wallet locked. The mnemonic was cleared from memory.":
       "Wallet locked. The mnemonic was cleared from memory.",
     "Wallet restored.": "Wallet restored.",
+    "Wallet spends {amount} sats + a 10,000-sat bond (returned on settle). Recipient receives amount minus fee.":
+      "Wallet spends {amount} sats + a 10,000-sat bond (returned on settle). Recipient receives amount minus fee.",
+    "Wallet spends {total} sats (amount + fee) + a 10,000-sat bond (returned on settle). Recipient receives the full amount.":
+      "Wallet spends {total} sats (amount + fee) + a 10,000-sat bond (returned on settle). Recipient receives the full amount.",
     "Wallet type": "Wallet type",
     "When locked, your balance stays readable on this device. Turning privacy on hides it until you unlock.":
       "When locked, your balance stays readable on this device. Turning privacy on hides it until you unlock.",
@@ -554,6 +579,8 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
       "Una billetera de Bitcoin con autocustodia. Tus claves están en tus manos: Aratiri no puede recuperarlas ni tomarlas.",
     "Amount (sats) — optional, any amount":
       "Monto (sats): opcional, cualquier monto",
+    "Amount must be greater than the fee ({fee} sats) when the fee is deducted from the withdrawal.":
+      "El monto debe ser mayor que la comisión ({fee} sats) cuando la comisión se descuenta del retiro.",
     "Aratiri holds your keys.": "Aratiri guarda tus claves.",
     "Backup phrase": "Frase de respaldo",
     "Backup status": "Estado del respaldo",
@@ -579,10 +606,13 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "Create a Spark wallet": "Crear una billetera Spark",
     Custodial: "Custodiada",
     Deposit: "Depósito",
+    "Deduct fee from withdrawal amount (recipient gets amount minus fee).":
+      "Descontar la comisión del monto del retiro (el destinatario recibe el monto menos la comisión).",
     "Deposit Bitcoin": "Depositar Bitcoin",
     "Deposit address": "Dirección de depósito",
     "Don't screenshot. Don't paste into chat. Write it down now.":
       "No tomes capturas de pantalla. No lo pegues en un chat. Escríbelo ahora.",
+    "Enter an amount in sats.": "Ingresa un monto en sats.",
     "Each word must be lower-case letters (no spaces or symbols).":
       "Cada palabra debe tener solo letras minúsculas (sin espacios ni símbolos).",
     "Enter your backup phrase. Words are lower-case letters only.":
@@ -607,8 +637,13 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
       "Lo he escrito: marcar como respaldado",
     "Keep your keys with Spark": "Mantén tus claves con Spark",
     "Lightning invoice": "Factura Lightning",
+    "LNURL callback returned an invalid invoice.":
+      "El callback LNURL devolvió una factura inválida.",
+    "LNURL invoice amount ({invoice} sats) does not match the amount you entered ({entered} sats).":
+      "El monto de la factura LNURL ({invoice} sats) no coincide con el monto que ingresaste ({entered} sats).",
     "Lock wallet": "Bloquear billetera",
     "Locking...": "Bloqueando...",
+    "Mark as backed up": "Marcar como respaldado",
     "Maximum fee cap": "Límite máximo de comisión",
     "My Spark deposit address": "Mi dirección de depósito Spark",
     "Network & account": "Red y cuenta",
@@ -617,6 +652,10 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
       "Aún no respaldada. Tu frase no ha sido verificada.",
     "One permanent address. Its key is shared with the payment operator, so single-use addresses are more private.":
       "Una dirección permanente. Su clave se comparte con el operador de pagos, por eso las direcciones de un solo uso son más privadas.",
+    "Paid from your Spark wallet. The invoice is fetched in your browser, then paid with your keys.":
+      "Se paga desde tu billetera Spark. La factura se obtiene en tu navegador y luego se paga con tus claves.",
+    "Paste Invoice, LNURL, Bitcoin or Spark address, or Alias":
+      "Pega una factura, LNURL, dirección Bitcoin o Spark, o un alias",
     "Pick the word at position {position} of your backup phrase.":
       "Elige la palabra en la posición {position} de tu frase de respaldo.",
     "Privacy mode": "Modo de privacidad",
@@ -626,16 +665,23 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
       "Modo de privacidad activado. Tu saldo estará oculto hasta que desbloquees esta billetera.",
     "Privacy on": "Privacidad activada",
     "Re-estimate Fee": "Re-estimar comisión",
+    "Remove from this device": "Quitar de este dispositivo",
     "Restore a Spark wallet": "Restaurar una billetera Spark",
     "Restore a wallet": "Restaurar una billetera",
     "Restore this wallet": "Restaurar esta billetera",
+    "Required sats (spend + 10,000-sat bond) exceed your available balance of {available} sats.":
+      "Los sats requeridos (gasto + depósito de garantía de 10.000 sats) superan tu saldo disponible de {available} sats.",
     "Restoring...": "Restaurando...",
     Reusable: "Reutilizable",
     "Self-custody": "Autocustodia",
     "Self-custody wallet": "Billetera de autocustodia",
+    "Send {amount} sats": "Enviar {amount} sats",
+    "Send to a Spark wallet — 0 fee, instant.":
+      "Enviar a una billetera Spark: sin comisión, al instante.",
     "Single-use": "De un solo uso",
     Spark: "Spark",
     "Spark fee (0.25% + routing)": "Comisión Spark (0,25 % + enrutamiento)",
+    "Spark transfer": "Transferencia Spark",
     Taproot: "Taproot",
     "That doesn't look like a valid backup phrase. Check each word.":
       "Eso no parece una frase de respaldo válida. Revisa cada palabra.",
@@ -665,6 +711,10 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "Wallet locked. The mnemonic was cleared from memory.":
       "Billetera bloqueada. La frase mnemotécnica se eliminó de la memoria.",
     "Wallet restored.": "Billetera restaurada.",
+    "Wallet spends {amount} sats + a 10,000-sat bond (returned on settle). Recipient receives amount minus fee.":
+      "La billetera gasta {amount} sats + un depósito de garantía de 10.000 sats (devuelto al liquidar). El destinatario recibe el monto menos la comisión.",
+    "Wallet spends {total} sats (amount + fee) + a 10,000-sat bond (returned on settle). Recipient receives the full amount.":
+      "La billetera gasta {total} sats (monto + comisión) + un depósito de garantía de 10.000 sats (devuelto al liquidar). El destinatario recibe el monto completo.",
     "Wallet type": "Tipo de billetera",
     "When locked, your balance stays readable on this device. Turning privacy on hides it until you unlock.":
       "Mientras está bloqueada, tu saldo sigue siendo legible en este dispositivo. Al activar la privacidad, se oculta hasta que desbloquees.",

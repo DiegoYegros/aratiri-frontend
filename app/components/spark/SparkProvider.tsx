@@ -328,6 +328,13 @@ export const SparkProvider = ({ children }: PropsWithChildren) => {
       clearError();
       const currentMeta = metaRef.current;
       if (!currentMeta) throw new Error("No Spark wallet is registered");
+      const expectedIdentity = currentMeta.identity_public_key;
+      if (
+        typeof expectedIdentity !== "string" ||
+        !expectedIdentity.trim()
+      ) {
+        throw new Error("Spark wallet metadata is incomplete");
+      }
       try {
         const { wallet: w } = await SparkWallet.getOrCreateWallet({
           mnemonicOrSeed: phrase,
@@ -337,8 +344,7 @@ export const SparkProvider = ({ children }: PropsWithChildren) => {
         });
         const identityPublicKey = await w.getIdentityPublicKey();
         if (
-          identityPublicKey.toLowerCase() !==
-          currentMeta.identity_public_key.toLowerCase()
+          identityPublicKey.toLowerCase() !== expectedIdentity.toLowerCase()
         ) {
           await w.cleanup();
           throw new Error("That recovery phrase doesn't match this wallet.");
@@ -477,7 +483,11 @@ export const SparkProvider = ({ children }: PropsWithChildren) => {
       try {
         const stored = await getSparkWallet();
         if (cancelled) return;
-        if (stored) {
+        if (
+          stored &&
+          stored.identity_public_key?.trim() &&
+          stored.spark_address?.trim()
+        ) {
           metaRef.current = stored;
           setMeta(stored);
           buildReadonly();

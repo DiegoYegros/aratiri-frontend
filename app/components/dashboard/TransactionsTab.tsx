@@ -14,7 +14,7 @@ import { TranslateFn, useTranslation } from "@/app/hooks/useTranslation";
 import { useLanguage } from "@/app/LanguageProvider";
 import { LanguageCode } from "@/app/lib/translations";
 import type { SparkTransferRow } from "../spark/SparkProvider";
-import type { WalletKind } from "../spark/WalletSwitcher";
+import type { WalletKind } from "@/app/lib/walletKind";
 
 const getTransactionProperties = (
   tx: Transaction,

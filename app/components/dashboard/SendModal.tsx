@@ -14,10 +14,18 @@ import { Modal } from "../ui/Modal";
 import { IconButton } from "../ui/IconButton";
 import { Alert } from "../ui/Alert";
 import { SparkFeeLine } from "../spark/SparkFeeLine";
+import {
+  isSparkAddress,
+  normalizeSparkAddress,
+} from "../../lib/spark/address";
+import { fetchLnurlBolt11 } from "../../lib/spark/lnurl";
 import { describeSparkError } from "../../lib/spark/mapping";
+import { sparkWithdrawSpendSats } from "../../lib/spark/withdraw";
 import { SparkSpeedChooser, type ExitSpeedValue } from "../spark/SparkSpeedChooser";
 import { useSpark } from "../spark/SparkProvider";
-import type { WalletKind } from "../spark/WalletSwitcher";
+import type { WalletKind } from "@/app/lib/walletKind";
+
+export { sparkWithdrawSpendSats } from "../../lib/spark/withdraw";
 
 interface SendModalProps {
   onClose: () => void;
@@ -57,12 +65,15 @@ export const SendModal = ({
   const [lnurlAmount, setLnurlAmount] = useState("");
   const [lnurlComment, setLnurlComment] = useState("");
   const [onChainAmount, setOnChainAmount] = useState("");
+  const [sparkTransferAmount, setSparkTransferAmount] = useState("");
   const [fee, setFee] = useState<EstimateFeeResponse | null>(null);
   const [showFee, setShowFee] = useState(false);
   const [sparkFeeEstimate, setSparkFeeEstimate] = useState<number | null>(null);
   const [sparkMaxFee, setSparkMaxFee] = useState(0);
   const [sparkQuote, setSparkQuote] = useState<SparkFeeQuoteLike | null>(null);
   const [sparkSpeed, setSparkSpeed] = useState<ExitSpeedValue>("FAST");
+  /** Design §5.3 default: fee deducted from withdrawal amount. */
+  const [deductFeeFromAmount, setDeductFeeFromAmount] = useState(true);
   const t = useTranslation();
 
   const isSpark = walletKind === "spark";
@@ -70,6 +81,7 @@ export const SendModal = ({
 
   const sparkAvailable = spark.balance?.available ?? null;
   const onChainAmt = parseInt(onChainAmount) || 0;
+  const sparkTransferAmt = parseInt(sparkTransferAmount) || 0;
   const sparkQuoteExpired =
     isSpark && !!sparkQuote && Date.parse(sparkQuote.expiresAt) <= Date.now();
 
@@ -116,11 +128,24 @@ export const SendModal = ({
     setLnurlAmount("");
     setLnurlComment("");
     setOnChainAmount("");
+    setSparkTransferAmount("");
     setFee(null);
     setShowFee(false);
     setSparkQuote(null);
+    setSparkFeeEstimate(null);
+    setSparkMaxFee(0);
+    setDeductFeeFromAmount(true);
 
     try {
+      // Spark addresses are not in Aratiri's decoder — resolve client-side.
+      if (isSpark && isSparkAddress(valueToDecode)) {
+        setDecoded({
+          type: "spark_address",
+          data: normalizeSparkAddress(valueToDecode),
+        });
+        return;
+      }
+
       const data: DecodedResponse = await apiCall(
         `/decoder?input=${encodeURIComponent(valueToDecode)}`
       );
@@ -203,13 +228,23 @@ export const SendModal = ({
     return fees[speed][0] + fees[speed][1];
   };
 
-  const sparkTotalRequired =
-    isSpark && sparkQuote ? onChainAmt + sparkQuoteTotal(sparkSpeed) : 0;
+  const feeSats = sparkQuote ? sparkQuoteTotal(sparkSpeed) : 0;
+  const sparkSpendRequired = sparkWithdrawSpendSats(
+    onChainAmt,
+    feeSats,
+    deductFeeFromAmount
+  );
+  const sparkFeeExceedsAmount =
+    Boolean(sparkQuote) &&
+    deductFeeFromAmount &&
+    (onChainAmt <= 0 || onChainAmt <= feeSats);
   const sparkBondBlocked =
     isSpark &&
     sparkQuote &&
     sparkAvailable !== null &&
-    sparkTotalRequired + WITHDRAW_BOND_SATS > sparkAvailable;
+    sparkSpendRequired + WITHDRAW_BOND_SATS > sparkAvailable;
+  const sparkWithdrawBlocked =
+    Boolean(sparkBondBlocked) || Boolean(sparkFeeExceedsAmount);
 
   const handlePay = async () => {
     if (!decoded || !decoded.data) return;
@@ -227,6 +262,65 @@ export const SendModal = ({
             maxFeeSats: sparkMaxFee,
             preferSpark: true,
           });
+        } else if (decoded.type === "spark_address") {
+          if (!sparkTransferAmt || sparkTransferAmt <= 0) {
+            throw new Error(t("Enter an amount in sats."));
+          }
+          data = await sparkWallet.transfer({
+            receiverSparkAddress: decoded.data as string,
+            amountSats: sparkTransferAmt,
+          });
+        } else if (
+          decoded.type === "lnurl_params" ||
+          decoded.type === "alias"
+        ) {
+          const params = decoded.data as LnurlParams;
+          const amountSats = parseInt(lnurlAmount);
+          const amountMsat = amountSats * 1000;
+          if (
+            amountMsat < params.minSendable ||
+            amountMsat > params.maxSendable
+          ) {
+            throw new Error(
+              t("Amount must be between {min} and {max} sats.", {
+                min: (params.minSendable / 1000).toLocaleString(),
+                max: (params.maxSendable / 1000).toLocaleString(),
+              })
+            );
+          }
+          const bolt11 = await fetchLnurlBolt11({
+            callback: params.callback,
+            amountMsat,
+            comment: lnurlComment || undefined,
+          });
+          // LUD-06: verify the returned invoice amount before signing.
+          // Decode-only via Aratiri — never pay through custodial endpoints.
+          const decodedInvoice: DecodedResponse = await apiCall(
+            `/decoder?input=${encodeURIComponent(bolt11)}`
+          );
+          if (decodedInvoice.type !== "lightning_invoice" || !decodedInvoice.data) {
+            throw new Error(t("LNURL callback returned an invalid invoice."));
+          }
+          const invoiceSats = (decodedInvoice.data as DecodedInvoice).num_satoshis;
+          if (invoiceSats !== amountSats) {
+            throw new Error(
+              t(
+                "LNURL invoice amount ({invoice} sats) does not match the amount you entered ({entered} sats).",
+                {
+                  invoice: invoiceSats.toLocaleString(),
+                  entered: amountSats.toLocaleString(),
+                }
+              )
+            );
+          }
+          // Always derive the LNURL cap from this payment's amount — never reuse
+          // a prior BOLT11 session's sparkMaxFee.
+          const cap = Math.max(5, Math.round(amountSats * 0.0017));
+          data = await sparkWallet.payLightningInvoice({
+            invoice: bolt11,
+            maxFeeSats: cap,
+            preferSpark: true,
+          });
         } else if (decoded.type === "bitcoin_address" && sparkQuote) {
           if (sparkQuoteExpired) {
             throw new Error(
@@ -234,13 +328,21 @@ export const SendModal = ({
             );
           }
           const feeAmountSats = sparkQuoteTotal(sparkSpeed);
+          if (deductFeeFromAmount && onChainAmt <= feeAmountSats) {
+            throw new Error(
+              t(
+                "Amount must be greater than the fee ({fee} sats) when the fee is deducted from the withdrawal.",
+                { fee: feeAmountSats.toLocaleString() }
+              )
+            );
+          }
           data = await sparkWallet.withdraw({
             onchainAddress: decoded.data as string,
             exitSpeed: sparkSpeed as never,
             amountSats: onChainAmt,
             feeAmountSats,
             feeQuoteId: sparkQuote.id,
-            deductFeeFromWithdrawalAmount: false,
+            deductFeeFromWithdrawalAmount: deductFeeFromAmount,
           });
         } else {
           throw new Error(t("Payment type not supported yet."));
@@ -329,6 +431,10 @@ export const SendModal = ({
   const primaryBtn =
     "w-full min-h-11 bg-accent text-accent-fg font-semibold py-3 px-4 rounded-lg hover:bg-accent-hover disabled:opacity-50 transition";
 
+  const pastePlaceholder = isSpark
+    ? t("Paste Invoice, LNURL, Bitcoin or Spark address, or Alias")
+    : t("Paste Invoice, LNURL, Address, or Alias");
+
   const renderDecodedContent = () => {
     if (!decoded || !decoded.data) return null;
 
@@ -366,6 +472,52 @@ export const SendModal = ({
                 ? t("Paying...")
                 : t("Pay {amount} sats", {
                     amount: invoice.num_satoshis.toLocaleString(),
+                  })}
+            </button>
+          </div>
+        );
+      }
+
+      case "spark_address": {
+        const address = decoded.data as string;
+        return (
+          <div className="mt-6 bg-input border border-panel-edge p-4 rounded-lg space-y-4 animate-fade-in">
+            <h3 className="font-semibold text-lg">{t("Spark transfer")}</h3>
+            <p className="text-sm text-muted">
+              {t("Send to a Spark wallet — 0 fee, instant.")}
+            </p>
+            <p className="font-address text-xs break-all text-left">{address}</p>
+            <div className="relative">
+              <label htmlFor="spark-transfer-amount" className="sr-only">
+                {t("Amount (sats)")}
+              </label>
+              <Bitcoin
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+                size={20}
+                aria-hidden="true"
+              />
+              <input
+                id="spark-transfer-amount"
+                type="number"
+                value={sparkTransferAmount}
+                onChange={(e) => setSparkTransferAmount(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={t("Amount (sats)")}
+                className={fieldClass}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handlePay}
+              disabled={loading || !sparkTransferAmt}
+              className={primaryBtn}
+            >
+              {loading
+                ? t("Sending...")
+                : t("Send {amount} sats", {
+                    amount: sparkTransferAmt
+                      ? sparkTransferAmt.toLocaleString()
+                      : "0",
                   })}
             </button>
           </div>
@@ -431,6 +583,13 @@ export const SendModal = ({
                 />
               </div>
             )}
+            {isSpark && (
+              <p className="text-xs text-muted">
+                {t(
+                  "Paid from your Spark wallet. The invoice is fetched in your browser, then paid with your keys."
+                )}
+              </p>
+            )}
             <button
               type="button"
               onClick={handlePay}
@@ -473,10 +632,33 @@ export const SendModal = ({
                   speed={sparkSpeed}
                   onChange={setSparkSpeed}
                 />
+                <label className="flex items-start gap-3 text-left text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={deductFeeFromAmount}
+                    onChange={(e) => setDeductFeeFromAmount(e.target.checked)}
+                    className="mt-1"
+                  />
+                  <span>
+                    {t(
+                      "Deduct fee from withdrawal amount (recipient gets amount minus fee)."
+                    )}
+                  </span>
+                </label>
                 <p className="text-xs text-muted">
-                  {t(
-                    "A 10,000-sat bond is reserved during the withdrawal and returned when it settles."
-                  )}
+                  {deductFeeFromAmount
+                    ? t(
+                        "Wallet spends {amount} sats + a 10,000-sat bond (returned on settle). Recipient receives amount minus fee.",
+                        { amount: onChainAmt.toLocaleString() }
+                      )
+                    : t(
+                        "Wallet spends {total} sats (amount + fee) + a 10,000-sat bond (returned on settle). Recipient receives the full amount.",
+                        {
+                          total: (
+                            onChainAmt + feeSats
+                          ).toLocaleString(),
+                        }
+                      )}
                 </p>
                 {sparkQuoteExpired && (
                   <Alert variant="danger">
@@ -485,10 +667,18 @@ export const SendModal = ({
                     )}
                   </Alert>
                 )}
+                {sparkFeeExceedsAmount && (
+                  <Alert variant="danger">
+                    {t(
+                      "Amount must be greater than the fee ({fee} sats) when the fee is deducted from the withdrawal.",
+                      { fee: feeSats.toLocaleString() }
+                    )}
+                  </Alert>
+                )}
                 {sparkBondBlocked && (
                   <Alert variant="danger">
                     {t(
-                      "Total (amount + fee + 10,000-sat bond) exceeds your available balance of {available} sats.",
+                      "Required sats (spend + 10,000-sat bond) exceed your available balance of {available} sats.",
                       { available: sparkAvailable?.toLocaleString() }
                     )}
                   </Alert>
@@ -497,7 +687,7 @@ export const SendModal = ({
                   type="button"
                   onClick={handlePay}
                   disabled={
-                    loading || sparkQuoteExpired || Boolean(sparkBondBlocked)
+                    loading || sparkQuoteExpired || sparkWithdrawBlocked
                   }
                   className={`${primaryBtn} mt-4`}
                 >
@@ -580,14 +770,14 @@ export const SendModal = ({
       {!decoded && (
         <div className="space-y-4">
           <label htmlFor="send-input" className="sr-only">
-            {t("Paste Invoice, LNURL, Address, or Alias")}
+            {pastePlaceholder}
           </label>
           <textarea
             id="send-input"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={t("Paste Invoice, LNURL, Address, or Alias")}
+            placeholder={pastePlaceholder}
             className="w-full h-32 px-4 py-3 bg-input border border-panel-edge rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent font-mono text-sm"
           />
           <div className="flex gap-2">

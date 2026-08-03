@@ -6,7 +6,7 @@ import { MnemonicVerify } from "@/app/components/spark/MnemonicVerify";
 import { SparkSpeedChooser } from "@/app/components/spark/SparkSpeedChooser";
 import { SparkFeeLine } from "@/app/components/spark/SparkFeeLine";
 import { SparkHiddenState } from "@/app/components/spark/SparkHiddenState";
-import { WalletSwitcher } from "@/app/components/spark/WalletSwitcher";
+import { SparkGetStarted } from "@/app/components/spark/SparkGetStarted";
 import { SparkDeposit } from "@/app/components/spark/SparkDeposit";
 import { SparkSecurityPanel } from "@/app/components/spark/SparkSecurityPanel";
 
@@ -158,61 +158,26 @@ describe("SparkHiddenState", () => {
   });
 });
 
-describe("WalletSwitcher", () => {
-  it("shows the get-started card only when no wallet exists", async () => {
+describe("SparkGetStarted", () => {
+  it("shows trust copy and fires create/restore CTAs", async () => {
     const user = userEvent.setup();
     const onCreate = vi.fn();
     const onRestore = vi.fn();
-    const onChange = vi.fn();
 
     renderWithLang(
-      <WalletSwitcher
-        active="spark"
-        onChange={onChange}
-        sparkStatus="not-created"
-        onCreate={onCreate}
-        onRestore={onRestore}
-      />
+      <SparkGetStarted onCreate={onCreate} onRestore={onRestore} />
     );
 
     expect(screen.getByText("Keep your keys with Spark")).toBeInTheDocument();
+    expect(
+      screen.getByText(/You hold your keys — Aratiri can't recover them/)
+    ).toBeInTheDocument();
     await user.click(
       screen.getByRole("button", { name: "Create a Spark wallet" })
     );
     await user.click(screen.getByRole("button", { name: "Restore a wallet" }));
     expect(onCreate).toHaveBeenCalledTimes(1);
     expect(onRestore).toHaveBeenCalledTimes(1);
-  });
-
-  it("hides the get-started card once a wallet exists", () => {
-    renderWithLang(
-      <WalletSwitcher
-        active="spark"
-        onChange={vi.fn()}
-        sparkStatus="locked"
-        onCreate={vi.fn()}
-        onRestore={vi.fn()}
-      />
-    );
-    expect(
-      screen.queryByText("Keep your keys with Spark")
-    ).not.toBeInTheDocument();
-  });
-
-  it("switches wallet kinds via the segmented control", async () => {
-    const user = userEvent.setup();
-    const onChange = vi.fn();
-    renderWithLang(
-      <WalletSwitcher
-        active="spark"
-        onChange={onChange}
-        sparkStatus="locked"
-        onCreate={vi.fn()}
-        onRestore={vi.fn()}
-      />
-    );
-    await user.click(screen.getByRole("button", { name: "Custodial" }));
-    expect(onChange).toHaveBeenCalledWith("custodial");
   });
 });
 
@@ -293,8 +258,9 @@ describe("SparkSecurityPanel", () => {
     });
     renderWithLang(<SparkSecurityPanel />);
     expect(screen.getByText(/Not backed up yet/)).toBeInTheDocument();
+    expect(screen.getByText("Remove from this device")).toBeInTheDocument();
     await user.click(
-      screen.getByRole("button", { name: /I've written it down/ })
+      screen.getByRole("button", { name: "Mark as backed up" })
     );
     expect(setBackupVerified).toHaveBeenCalledWith(true);
     expect(screen.getByText(/MAINNET · account 1/)).toBeInTheDocument();

@@ -15,7 +15,7 @@ import { IconButton } from "../ui/IconButton";
 import { Alert } from "../ui/Alert";
 import { SparkDeposit } from "../spark/SparkDeposit";
 import { SparkLightningReceive } from "../spark/SparkLightningReceive";
-import type { WalletKind } from "../spark/WalletSwitcher";
+import type { WalletKind } from "@/app/lib/walletKind";
 
 interface ReceiveModalProps {
   account: Account | null;

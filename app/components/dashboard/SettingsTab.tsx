@@ -41,8 +41,8 @@ export const SettingsTab = ({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="border border-panel-edge rounded-lg p-4">
+    <div className="space-y-5">
+      <div>
         <label
           htmlFor="currency-select"
           className="block text-sm font-medium text-muted-strong mb-2"
@@ -67,7 +67,7 @@ export const SettingsTab = ({
           )}
         </p>
       </div>
-      <div className="border border-panel-edge rounded-lg p-4">
+      <div>
         <label
           htmlFor="language-select"
           className="block text-sm font-medium text-muted-strong mb-2"

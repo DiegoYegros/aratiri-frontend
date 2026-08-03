@@ -56,6 +56,7 @@ export interface DecodedResponse {
     | "lnurl_params"
     | "bitcoin_address"
     | "alias"
+    | "spark_address"
     | "error";
   data: DecodedInvoice | LnurlParams | string | null;
   error?: string;
@@ -124,8 +125,27 @@ export interface BackupVerifiedRequest {
   backup_verified: boolean;
 }
 
-export const getSparkWallet = (): Promise<SparkWallet | null> =>
-  apiCall("/spark/wallet");
+/**
+ * Normalize GET /spark/wallet bodies. The API may return HTTP 200 with an empty
+ * body (apiCall → {}); treat missing identity/address as no wallet.
+ */
+export function parseSparkWallet(value: unknown): SparkWallet | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  const identity =
+    typeof record.identity_public_key === "string"
+      ? record.identity_public_key.trim()
+      : "";
+  const address =
+    typeof record.spark_address === "string"
+      ? record.spark_address.trim()
+      : "";
+  if (!identity || !address) return null;
+  return value as SparkWallet;
+}
+
+export const getSparkWallet = async (): Promise<SparkWallet | null> =>
+  parseSparkWallet(await apiCall("/spark/wallet"));
 
 export const registerSparkWallet = (
   body: RegisterSparkWalletRequest
