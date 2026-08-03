@@ -6,6 +6,7 @@ import {
   ArrowRight,
   Eye,
   EyeOff,
+  KeyRound,
   LogOut,
   Settings,
   Zap,
@@ -31,6 +32,15 @@ import { RequestCenter } from "./RequestCenter";
 import { RefreshZapButton } from "./RefreshZapButton";
 import { useTranslation } from "@/app/hooks/useTranslation";
 import { useLanguage } from "@/app/LanguageProvider";
+import { SparkHiddenState } from "../spark/SparkHiddenState";
+import { SparkOnboarding } from "../spark/SparkOnboarding";
+import { SparkSecurityPanel } from "../spark/SparkSecurityPanel";
+import { SparkUnlockModal } from "../spark/SparkUnlockModal";
+import { useSpark } from "../spark/SparkProvider";
+import {
+  WalletSwitcher,
+  type WalletKind,
+} from "../spark/WalletSwitcher";
 
 type DashboardView = "wallet" | "requests";
 
@@ -53,6 +63,14 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
   const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [activeWallet, setActiveWallet] = useState<WalletKind>("custodial");
+  const [isSparkOnboardingOpen, setIsSparkOnboardingOpen] = useState(false);
+  const [sparkOnboardingMode, setSparkOnboardingMode] = useState<
+    "create" | "restore"
+  >("create");
+  const [isSparkUnlockOpen, setIsSparkUnlockOpen] = useState(false);
+
+  const spark = useSpark();
 
   const registerRequestsRefresh = useCallback(
     (fn: (() => Promise<void>) | null) => {
@@ -151,6 +169,24 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
     };
     loadData();
   }, [fetchAllData]);
+
+  const formatSparkBalance = () => {
+    if (!isClient || !balanceVisible) return "•••••••";
+    const sats = spark.balance?.available ?? null;
+    if (sats === null) return "•••••••";
+    switch (displayUnit) {
+      case "sats":
+        return formatSats(sats, locale);
+      case "btc":
+        return formatBtc(sats);
+      case "fiat": {
+        if (!btcPrice) return "N/A";
+        return formatFiatAmount((sats / 1e8) * btcPrice.price, locale);
+      }
+      default:
+        return formatSats(sats, locale);
+    }
+  };
 
   const toggleDisplayUnit = () => {
     const units: ("sats" | "fiat" | "btc")[] = ["sats", "btc", "fiat"];
@@ -325,14 +361,31 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
             setIsSendModalOpen(false);
             void fetchAllData();
             void refreshBtcPrice();
+            void spark.refresh();
           }}
+          walletKind={activeWallet}
         />
       )}
       {isReceiveModalOpen && (
         <ReceiveModal
           account={account}
           onClose={() => setIsReceiveModalOpen(false)}
+          walletKind={activeWallet}
         />
+      )}
+      {isSparkOnboardingOpen && (
+        <SparkOnboarding
+          initialMode={sparkOnboardingMode}
+          onClose={() => setIsSparkOnboardingOpen(false)}
+          onComplete={() => {
+            setIsSparkOnboardingOpen(false);
+            setActiveWallet("spark");
+            void spark.refresh();
+          }}
+        />
+      )}
+      {isSparkUnlockOpen && (
+        <SparkUnlockModal onClose={() => setIsSparkUnlockOpen(false)} />
       )}
       {isSettingsModalOpen && (
         <Modal
@@ -346,6 +399,14 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
             availableCurrencies={availableCurrencies}
             loading={currencyLoading}
           />
+          {(spark.status === "unlocked" || spark.status === "locked") && (
+            <div className="mt-8 pt-6 border-t border-panel-edge">
+              <h3 className="text-lg font-semibold mb-4">
+                {t("Self-custody wallet")}
+              </h3>
+              <SparkSecurityPanel />
+            </div>
+          )}
         </Modal>
       )}
 
@@ -433,89 +494,236 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
 
         {activeView === "wallet" ? (
           <>
-            <section
-              className="text-center mb-8"
-              aria-labelledby="balance-heading"
-            >
-              <h2 id="balance-heading" className="sr-only">
-                {t("Balance")}
-              </h2>
-              <div className="flex justify-center items-center gap-2 flex-wrap">
-                <p className="text-4xl sm:text-5xl font-semibold tracking-tighter font-amount">
-                  {formatBalance()}
-                </p>
-                {isBalanceVisible && (
+            <WalletSwitcher
+              active={activeWallet}
+              onChange={setActiveWallet}
+              sparkStatus={spark.status}
+              onCreate={() => {
+                setSparkOnboardingMode("create");
+                setIsSparkOnboardingOpen(true);
+              }}
+              onRestore={() => {
+                setSparkOnboardingMode("restore");
+                setIsSparkOnboardingOpen(true);
+              }}
+            />
+
+            {activeWallet === "custodial" ? (
+              <>
+                <section
+                  className="text-center mb-8"
+                  aria-labelledby="balance-heading"
+                >
+                  <h2 id="balance-heading" className="sr-only">
+                    {t("Balance")}
+                  </h2>
+                  <div className="flex justify-center items-center gap-2 flex-wrap">
+                    <p className="text-4xl sm:text-5xl font-semibold tracking-tighter font-amount">
+                      {formatBalance()}
+                    </p>
+                    {isBalanceVisible && (
+                      <button
+                        type="button"
+                        onClick={toggleDisplayUnit}
+                        aria-label={t(
+                          "Change display unit. Current unit: {unit}",
+                          { unit: getDisplayUnitLabel() }
+                        )}
+                        className="inline-flex items-center justify-center text-xl sm:text-2xl text-muted font-light min-h-11 min-w-11 px-2 rounded-lg hover:text-foreground hover:bg-panel-elevated transition-colors"
+                      >
+                        {getDisplayUnitLabel()}
+                      </button>
+                    )}
+                    <IconButton
+                      label={
+                        isBalanceVisible ? t("Hide balance") : t("Show balance")
+                      }
+                      onClick={toggleBalanceVisibility}
+                    >
+                      {isBalanceVisible ? (
+                        <Eye size={22} aria-hidden="true" />
+                      ) : (
+                        <EyeOff size={22} aria-hidden="true" />
+                      )}
+                    </IconButton>
+                  </div>
+                  {showSpotPrice && (
+                    <p
+                      className="mt-2 text-sm text-muted font-amount min-h-5"
+                      aria-live="polite"
+                    >
+                      {btcPriceLoading && !btcPrice ? (
+                        <span className="inline-block w-40 h-3 rounded bg-panel-elevated align-middle" />
+                      ) : btcPrice ? (
+                        t("1 BTC ≈ {price}", {
+                          price: formatFiat(
+                            btcPrice.price,
+                            btcPrice.currency,
+                            locale
+                          ),
+                        })
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                    </p>
+                  )}
+                </section>
+
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-8">
                   <button
                     type="button"
-                    onClick={toggleDisplayUnit}
-                    aria-label={t("Change display unit. Current unit: {unit}", {
-                      unit: getDisplayUnitLabel(),
-                    })}
-                    className="inline-flex items-center justify-center text-xl sm:text-2xl text-muted font-light min-h-11 min-w-11 px-2 rounded-lg hover:text-foreground hover:bg-panel-elevated transition-colors"
+                    onClick={() => setIsReceiveModalOpen(true)}
+                    className="min-h-12 bg-success-bg text-success font-semibold py-3 px-4 rounded-lg border border-success/30 hover:bg-success/20 transition flex items-center justify-center gap-2 text-base sm:text-lg touch-manipulation"
                   >
-                    {getDisplayUnitLabel()}
+                    <ArrowLeft aria-hidden="true" />
+                    <span>{t("Receive")}</span>
                   </button>
-                )}
-                <IconButton
-                  label={
-                    isBalanceVisible ? t("Hide balance") : t("Show balance")
-                  }
-                  onClick={toggleBalanceVisibility}
-                >
-                  {isBalanceVisible ? (
-                    <Eye size={22} aria-hidden="true" />
-                  ) : (
-                    <EyeOff size={22} aria-hidden="true" />
-                  )}
-                </IconButton>
+                  <button
+                    type="button"
+                    onClick={() => setIsSendModalOpen(true)}
+                    className="min-h-12 bg-accent-subtle text-accent font-semibold py-3 px-4 rounded-lg border border-accent/30 hover:bg-accent/25 transition flex items-center justify-center gap-2 text-base sm:text-lg touch-manipulation"
+                  >
+                    <span>{t("Send")}</span>
+                    <ArrowRight aria-hidden="true" />
+                  </button>
+                </div>
+
+                <TransactionsTab
+                  transactions={transactions}
+                  currency={selectedCurrency}
+                  balanceVisible={balanceVisible}
+                  displayUnit={displayUnit}
+                />
+              </>
+            ) : spark.status === "loading" ? (
+              <div
+                className="text-center py-16 text-muted"
+                role="status"
+                aria-live="polite"
+              >
+                {t("Loading...")}
               </div>
-              {showSpotPrice && (
-                <p
-                  className="mt-2 text-sm text-muted font-amount min-h-5"
-                  aria-live="polite"
+            ) : spark.status === "not-created" ? null : spark.status ===
+                "locked" && spark.meta?.privacy_enabled ? (
+              <SparkHiddenState
+                onUnlock={() => setIsSparkUnlockOpen(true)}
+              />
+            ) : (
+              <>
+                <section
+                  className="text-center mb-8"
+                  aria-labelledby="spark-balance-heading"
                 >
-                  {btcPriceLoading && !btcPrice ? (
-                    <span className="inline-block w-40 h-3 rounded bg-panel-elevated align-middle" />
-                  ) : btcPrice ? (
-                    t("1 BTC ≈ {price}", {
-                      price: formatFiat(
-                        btcPrice.price,
-                        btcPrice.currency,
-                        locale
-                      ),
-                    })
-                  ) : (
-                    <span className="text-muted">—</span>
+                  <h2 id="spark-balance-heading" className="sr-only">
+                    {t("Balance")}
+                  </h2>
+                  <div className="flex justify-center items-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border border-panel-edge bg-panel text-muted">
+                      <KeyRound className="w-3.5 h-3.5" aria-hidden="true" />
+                      {t("Self-custody")}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex justify-center items-center gap-2 flex-wrap">
+                    <p className="text-4xl sm:text-5xl font-semibold tracking-tighter font-amount">
+                      {formatSparkBalance()}
+                    </p>
+                    {isBalanceVisible && (
+                      <button
+                        type="button"
+                        onClick={toggleDisplayUnit}
+                        aria-label={t(
+                          "Change display unit. Current unit: {unit}",
+                          { unit: getDisplayUnitLabel() }
+                        )}
+                        className="inline-flex items-center justify-center text-xl sm:text-2xl text-muted font-light min-h-11 min-w-11 px-2 rounded-lg hover:text-foreground hover:bg-panel-elevated transition-colors"
+                      >
+                        {getDisplayUnitLabel()}
+                      </button>
+                    )}
+                    <IconButton
+                      label={
+                        isBalanceVisible ? t("Hide balance") : t("Show balance")
+                      }
+                      onClick={toggleBalanceVisibility}
+                    >
+                      {isBalanceVisible ? (
+                        <Eye size={22} aria-hidden="true" />
+                      ) : (
+                        <EyeOff size={22} aria-hidden="true" />
+                      )}
+                    </IconButton>
+                  </div>
+                  {showSpotPrice && (
+                    <p
+                      className="mt-2 text-sm text-muted font-amount min-h-5"
+                      aria-live="polite"
+                    >
+                      {btcPriceLoading && !btcPrice ? (
+                        <span className="inline-block w-40 h-3 rounded bg-panel-elevated align-middle" />
+                      ) : btcPrice ? (
+                        t("1 BTC ≈ {price}", {
+                          price: formatFiat(
+                            btcPrice.price,
+                            btcPrice.currency,
+                            locale
+                          ),
+                        })
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                    </p>
                   )}
-                </p>
-              )}
-            </section>
+                </section>
 
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-8">
-              <button
-                type="button"
-                onClick={() => setIsReceiveModalOpen(true)}
-                className="min-h-12 bg-success-bg text-success font-semibold py-3 px-4 rounded-lg border border-success/30 hover:bg-success/20 transition flex items-center justify-center gap-2 text-base sm:text-lg touch-manipulation"
-              >
-                <ArrowLeft aria-hidden="true" />
-                <span>{t("Receive")}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsSendModalOpen(true)}
-                className="min-h-12 bg-accent-subtle text-accent font-semibold py-3 px-4 rounded-lg border border-accent/30 hover:bg-accent/25 transition flex items-center justify-center gap-2 text-base sm:text-lg touch-manipulation"
-              >
-                <span>{t("Send")}</span>
-                <ArrowRight aria-hidden="true" />
-              </button>
-            </div>
+                {spark.status === "locked" && (
+                  <p className="text-xs text-muted text-center mb-2">
+                    {t(
+                      "Balance as of last sync. Unlock for live data and signing."
+                    )}
+                  </p>
+                )}
 
-            <TransactionsTab
-              transactions={transactions}
-              currency={selectedCurrency}
-              balanceVisible={balanceVisible}
-              displayUnit={displayUnit}
-            />
+                {spark.status === "unlocked" ? (
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-8">
+                    <button
+                      type="button"
+                      onClick={() => setIsReceiveModalOpen(true)}
+                      className="min-h-12 bg-success-bg text-success font-semibold py-3 px-4 rounded-lg border border-success/30 hover:bg-success/20 transition flex items-center justify-center gap-2 text-base sm:text-lg touch-manipulation"
+                    >
+                      <ArrowLeft aria-hidden="true" />
+                      <span>{t("Receive")}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsSendModalOpen(true)}
+                      className="min-h-12 bg-accent-subtle text-accent font-semibold py-3 px-4 rounded-lg border border-accent/30 hover:bg-accent/25 transition flex items-center justify-center gap-2 text-base sm:text-lg touch-manipulation"
+                    >
+                      <span>{t("Send")}</span>
+                      <ArrowRight aria-hidden="true" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex justify-center mb-8">
+                    <button
+                      type="button"
+                      onClick={() => setIsSparkUnlockOpen(true)}
+                      className="min-h-12 bg-accent-subtle text-accent font-semibold py-3 px-6 rounded-lg border border-accent/30 hover:bg-accent/25 transition touch-manipulation"
+                    >
+                      {t("Unlock wallet")}
+                    </button>
+                  </div>
+                )}
+
+                <TransactionsTab
+                  transactions={transactions}
+                  currency={selectedCurrency}
+                  balanceVisible={balanceVisible}
+                  displayUnit={displayUnit}
+                  walletKind="spark"
+                  sparkRows={spark.transactions}
+                />
+              </>
+            )}
           </>
         ) : (
           <RequestCenter

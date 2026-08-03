@@ -98,6 +98,59 @@ export interface PaymentRequestListResponse {
   has_more: boolean;
 }
 
+/** Spark wallet metadata as served by the backend (snake_case from API). */
+export interface SparkWallet {
+  spark_address: string;
+  identity_public_key: string;
+  network: string;
+  account_index: number;
+  backup_verified: boolean;
+  privacy_enabled: boolean;
+}
+
+/** Registration payload carries only public metadata — never the mnemonic. */
+export interface RegisterSparkWalletRequest {
+  identity_public_key: string;
+  spark_address: string;
+  network: string;
+  account_index: number;
+}
+
+export interface UpdateSparkPrivacyRequest {
+  privacy_enabled: boolean;
+}
+
+export interface BackupVerifiedRequest {
+  backup_verified: boolean;
+}
+
+export const getSparkWallet = (): Promise<SparkWallet | null> =>
+  apiCall("/spark/wallet");
+
+export const registerSparkWallet = (
+  body: RegisterSparkWalletRequest
+): Promise<SparkWallet> =>
+  apiCall("/spark/wallets", { method: "POST", body: JSON.stringify(body) });
+
+export const setSparkBackupVerified = (
+  backupVerified: boolean
+): Promise<SparkWallet> =>
+  apiCall("/spark/backup-verified", {
+    method: "POST",
+    body: JSON.stringify({ backup_verified: backupVerified } satisfies BackupVerifiedRequest),
+  });
+
+export const setSparkPrivacy = (
+  privacyEnabled: boolean
+): Promise<SparkWallet> =>
+  apiCall("/spark/privacy", {
+    method: "POST",
+    body: JSON.stringify({ privacy_enabled: privacyEnabled } satisfies UpdateSparkPrivacyRequest),
+  });
+
+export const forgetSparkWallet = (): Promise<unknown> =>
+  apiCall("/spark/wallet", { method: "DELETE" });
+
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://aratiri.diegoyegros.com/v1";
 

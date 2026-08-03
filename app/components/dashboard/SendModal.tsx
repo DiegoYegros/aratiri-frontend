@@ -1,6 +1,6 @@
 "use client";
 import { ArrowLeft, Bitcoin, Edit, QrCode } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   apiCall,
   DecodedInvoice,
@@ -13,16 +13,41 @@ import { useTranslation } from "@/app/hooks/useTranslation";
 import { Modal } from "../ui/Modal";
 import { IconButton } from "../ui/IconButton";
 import { Alert } from "../ui/Alert";
+import { SparkFeeLine } from "../spark/SparkFeeLine";
+import { describeSparkError } from "../../lib/spark/mapping";
+import { SparkSpeedChooser, type ExitSpeedValue } from "../spark/SparkSpeedChooser";
+import { useSpark } from "../spark/SparkProvider";
+import type { WalletKind } from "../spark/WalletSwitcher";
 
 interface SendModalProps {
   onClose: () => void;
   onPaymentSent: () => void;
+  walletKind?: WalletKind;
 }
 
 const fieldClass =
   "w-full pl-10 pr-4 py-3 bg-input border border-panel-edge rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent text-foreground";
 
-export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
+interface SparkFeeQuoteLike {
+  id: string;
+  userFeeFast: { originalValue: number };
+  userFeeMedium: { originalValue: number };
+  userFeeSlow: { originalValue: number };
+  l1BroadcastFeeFast: { originalValue: number };
+  l1BroadcastFeeMedium: { originalValue: number };
+  l1BroadcastFeeSlow: { originalValue: number };
+  expiresAt: string;
+}
+
+/** Bond reserved by the SSP during a coop-exit withdrawal, returned on settle. */
+const WITHDRAW_BOND_SATS = 10_000;
+
+export const SendModal = ({
+  onClose,
+  onPaymentSent,
+  walletKind = "custodial",
+}: SendModalProps) => {
+  const spark = useSpark();
   const [inputValue, setInputValue] = useState("");
   const [decoded, setDecoded] = useState<DecodedResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -34,7 +59,38 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
   const [onChainAmount, setOnChainAmount] = useState("");
   const [fee, setFee] = useState<EstimateFeeResponse | null>(null);
   const [showFee, setShowFee] = useState(false);
+  const [sparkFeeEstimate, setSparkFeeEstimate] = useState<number | null>(null);
+  const [sparkMaxFee, setSparkMaxFee] = useState(0);
+  const [sparkQuote, setSparkQuote] = useState<SparkFeeQuoteLike | null>(null);
+  const [sparkSpeed, setSparkSpeed] = useState<ExitSpeedValue>("FAST");
   const t = useTranslation();
+
+  const isSpark = walletKind === "spark";
+  const sparkWallet = isSpark ? spark.wallet : null;
+
+  const sparkAvailable = spark.balance?.available ?? null;
+  const onChainAmt = parseInt(onChainAmount) || 0;
+  const sparkQuoteExpired =
+    isSpark && !!sparkQuote && Date.parse(sparkQuote.expiresAt) <= Date.now();
+
+  useEffect(() => {
+    if (!decoded || !isSpark) return;
+    if (decoded.type === "lightning_invoice" && sparkWallet) {
+      const invoice = decoded.data as DecodedInvoice;
+      const cap = Math.max(5, Math.round(invoice.num_satoshis * 0.0017));
+      setSparkMaxFee(cap);
+      setSparkFeeEstimate(null);
+      setLoading(true);
+      void sparkWallet
+        .getLightningSendFeeEstimate({
+          encodedInvoice: inputValue,
+          amountSats: invoice.num_satoshis,
+        })
+        .then((est) => setSparkFeeEstimate(est))
+        .catch(() => setSparkFeeEstimate(null))
+        .finally(() => setLoading(false));
+    }
+  }, [decoded, isSpark, inputValue, sparkWallet]);
 
   const handleKeyDown = (
     event: React.KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>
@@ -62,6 +118,7 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
     setOnChainAmount("");
     setFee(null);
     setShowFee(false);
+    setSparkQuote(null);
 
     try {
       const data: DecodedResponse = await apiCall(
@@ -91,6 +148,22 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
       return;
     setLoading(true);
     setError("");
+    if (sparkWallet) {
+      try {
+        const quote = await sparkWallet.getWithdrawalFeeQuote({
+          amountSats: parseInt(onChainAmount),
+          withdrawalAddress: decoded.data as string,
+        });
+        if (!quote) throw new Error(t("Fee quote unavailable."));
+        setSparkQuote(quote as unknown as SparkFeeQuoteLike);
+        setShowFee(true);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
     try {
       const data: EstimateFeeResponse = await apiCall(
         "/payments/onchain/estimate-fee",
@@ -111,6 +184,33 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
     }
   };
 
+  const sparkQuoteTotal = (speed: ExitSpeedValue): number => {
+    if (!sparkQuote) return 0;
+    const fees: Record<ExitSpeedValue, [number, number]> = {
+      FAST: [
+        sparkQuote.userFeeFast.originalValue,
+        sparkQuote.l1BroadcastFeeFast.originalValue,
+      ],
+      MEDIUM: [
+        sparkQuote.userFeeMedium.originalValue,
+        sparkQuote.l1BroadcastFeeMedium.originalValue,
+      ],
+      SLOW: [
+        sparkQuote.userFeeSlow.originalValue,
+        sparkQuote.l1BroadcastFeeSlow.originalValue,
+      ],
+    };
+    return fees[speed][0] + fees[speed][1];
+  };
+
+  const sparkTotalRequired =
+    isSpark && sparkQuote ? onChainAmt + sparkQuoteTotal(sparkSpeed) : 0;
+  const sparkBondBlocked =
+    isSpark &&
+    sparkQuote &&
+    sparkAvailable !== null &&
+    sparkTotalRequired + WITHDRAW_BOND_SATS > sparkAvailable;
+
   const handlePay = async () => {
     if (!decoded || !decoded.data) return;
 
@@ -120,7 +220,32 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
 
     try {
       let data;
-      if (decoded.type === "lightning_invoice") {
+      if (isSpark && sparkWallet) {
+        if (decoded.type === "lightning_invoice") {
+          data = await sparkWallet.payLightningInvoice({
+            invoice: inputValue,
+            maxFeeSats: sparkMaxFee,
+            preferSpark: true,
+          });
+        } else if (decoded.type === "bitcoin_address" && sparkQuote) {
+          if (sparkQuoteExpired) {
+            throw new Error(
+              t("This fee quote has expired. Go back and re-estimate the fee.")
+            );
+          }
+          const feeAmountSats = sparkQuoteTotal(sparkSpeed);
+          data = await sparkWallet.withdraw({
+            onchainAddress: decoded.data as string,
+            exitSpeed: sparkSpeed as never,
+            amountSats: onChainAmt,
+            feeAmountSats,
+            feeQuoteId: sparkQuote.id,
+            deductFeeFromWithdrawalAmount: false,
+          });
+        } else {
+          throw new Error(t("Payment type not supported yet."));
+        }
+      } else if (decoded.type === "lightning_invoice") {
         data = await apiCall("/payments/invoice", {
           method: "POST",
           body: JSON.stringify({ invoice: inputValue }),
@@ -161,15 +286,35 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
       }
 
       setSuccess(
-        t("Payment initiated! Status: {status}.", { status: data.status })
+        t("Payment initiated! Status: {status}.", {
+          status: (data as { status?: string })?.status ?? t("Completed"),
+        })
       );
+
+      // Outgoing ops have no push events: poll until the request settles.
+      const typename = (data as { typename?: string } | null)?.typename;
+      const reqId = (data as { id?: string } | null)?.id;
+      if (typename === "LightningSendRequest" && reqId) {
+        spark.trackOutgoing("lightning", reqId);
+      } else if (typename === "CoopExitRequest" && reqId) {
+        spark.trackOutgoing("withdrawal", reqId);
+      }
+
       setInputValue("");
       setDecoded(null);
       setTimeout(() => {
         onPaymentSent();
       }, 2000);
     } catch (err: any) {
-      setError(err.message);
+      setError(
+        describeSparkError(
+          err,
+          err.message,
+          t(
+            "Your device clock looks wrong. Check that the time and timezone are correct, then try again."
+          )
+        )
+      );
     } finally {
       setLoading(false);
     }
@@ -203,6 +348,14 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
               <span className="font-medium text-muted">{t("Description:")}</span>{" "}
               {invoice.description || "N/A"}
             </div>
+            {isSpark && sparkWallet && (
+              <SparkFeeLine
+                estimateSats={sparkFeeEstimate}
+                maxFeeSats={sparkMaxFee}
+                onMaxFeeChange={setSparkMaxFee}
+                busy={loading}
+              />
+            )}
             <button
               type="button"
               onClick={handlePay}
@@ -313,7 +466,55 @@ export const SendModal = ({ onClose, onPaymentSent }: SendModalProps) => {
                 disabled={showFee}
               />
             </div>
-            {showFee && fee ? (
+            {isSpark && sparkWallet && showFee && sparkQuote ? (
+              <div className="text-center space-y-3">
+                <SparkSpeedChooser
+                  quote={sparkQuote}
+                  speed={sparkSpeed}
+                  onChange={setSparkSpeed}
+                />
+                <p className="text-xs text-muted">
+                  {t(
+                    "A 10,000-sat bond is reserved during the withdrawal and returned when it settles."
+                  )}
+                </p>
+                {sparkQuoteExpired && (
+                  <Alert variant="danger">
+                    {t(
+                      "This fee quote has expired. Re-estimate to get fresh fees."
+                    )}
+                  </Alert>
+                )}
+                {sparkBondBlocked && (
+                  <Alert variant="danger">
+                    {t(
+                      "Total (amount + fee + 10,000-sat bond) exceeds your available balance of {available} sats.",
+                      { available: sparkAvailable?.toLocaleString() }
+                    )}
+                  </Alert>
+                )}
+                <button
+                  type="button"
+                  onClick={handlePay}
+                  disabled={
+                    loading || sparkQuoteExpired || Boolean(sparkBondBlocked)
+                  }
+                  className={`${primaryBtn} mt-4`}
+                >
+                  {loading ? t("Sending...") : t("Confirm and Send")}
+                </button>
+                {sparkQuoteExpired && (
+                  <button
+                    type="button"
+                    onClick={handleEstimateFee}
+                    disabled={loading}
+                    className="w-full min-h-11 bg-panel-elevated border border-panel-edge text-foreground font-semibold py-3 px-4 rounded-lg hover:bg-input disabled:opacity-50 transition"
+                  >
+                    {t("Re-estimate Fee")}
+                  </button>
+                )}
+              </div>
+            ) : showFee && fee ? (
               <div className="text-center space-y-1">
                 <p className="font-amount">
                   {t("Fee: {fee} sats", {

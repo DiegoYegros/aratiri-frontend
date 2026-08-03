@@ -4,6 +4,7 @@ import { ForgotPasswordScreen } from "./components/auth/ForgotPasswordScreen";
 import { LoginScreen } from "./components/auth/LoginScreen";
 import { RegisterScreen } from "./components/auth/RegisterScreen";
 import { Dashboard } from "./components/dashboard/Dashboard";
+import { SparkProvider } from "./components/spark/SparkProvider";
 
 const decodeJwt = (token: string): { exp: number } | null => {
   try {
@@ -64,7 +65,12 @@ export default function AratiriFrontend() {
 
   if (isAuthenticated) {
     return (
-      <Dashboard setToken={setToken} setIsAuthenticated={setIsAuthenticated} />
+      <SparkProvider>
+        <Dashboard
+          setToken={setToken}
+          setIsAuthenticated={setIsAuthenticated}
+        />
+      </SparkProvider>
     );
   }
 

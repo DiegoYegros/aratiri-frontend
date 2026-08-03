@@ -13,16 +13,24 @@ import { useTranslation } from "@/app/hooks/useTranslation";
 import { Modal } from "../ui/Modal";
 import { IconButton } from "../ui/IconButton";
 import { Alert } from "../ui/Alert";
+import { SparkDeposit } from "../spark/SparkDeposit";
+import { SparkLightningReceive } from "../spark/SparkLightningReceive";
+import type { WalletKind } from "../spark/WalletSwitcher";
 
 interface ReceiveModalProps {
   account: Account | null;
   onClose: () => void;
+  walletKind?: WalletKind;
 }
 
 const fieldClass =
   "w-full pl-10 pr-4 py-3 bg-input border border-panel-edge rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent text-foreground";
 
-export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
+export const ReceiveModal = ({
+  account,
+  onClose,
+  walletKind = "custodial",
+}: ReceiveModalProps) => {
   const [amount, setAmount] = useState("");
   const [memo, setMemo] = useState("");
   const [invoice, setInvoice] = useState<{ payment_request: string } | null>(
@@ -141,7 +149,13 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
       </div>
 
       <div className="p-4 sm:p-6 overflow-y-auto">
-        {activeTab === "lightning" && (
+        {activeTab === "lightning" && walletKind === "spark" && (
+          <div role="tabpanel" aria-labelledby="tab-lightning">
+            <SparkLightningReceive requireAmount={false} />
+          </div>
+        )}
+
+        {activeTab === "lightning" && walletKind === "custodial" && (
           <div
             role="tabpanel"
             aria-labelledby="tab-lightning"
@@ -193,7 +207,13 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
           </div>
         )}
 
-        {activeTab === "bitcoin" && (
+        {activeTab === "bitcoin" && walletKind === "spark" && (
+          <div role="tabpanel" aria-labelledby="tab-bitcoin">
+            <SparkDeposit />
+          </div>
+        )}
+
+        {activeTab === "bitcoin" && walletKind === "custodial" && (
           <div
             role="tabpanel"
             aria-labelledby="tab-bitcoin"
@@ -247,7 +267,13 @@ export const ReceiveModal = ({ account, onClose }: ReceiveModalProps) => {
           </div>
         )}
 
-        {activeTab === "request" && (
+        {activeTab === "request" && walletKind === "spark" && (
+          <div role="tabpanel" aria-labelledby="tab-request">
+            <SparkLightningReceive requireAmount />
+          </div>
+        )}
+
+        {activeTab === "request" && walletKind === "custodial" && (
           <div role="tabpanel" aria-labelledby="tab-request">
             {invoice ? (
               <div className="p-4 bg-input border border-panel-edge rounded-lg">

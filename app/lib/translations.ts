@@ -205,6 +205,149 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "This payment request is unavailable.":
       "This payment request is unavailable.",
     "Open in Wallet": "Open in Wallet",
+    "A 10,000-sat bond is reserved during the withdrawal and returned when it settles.":
+      "A 10,000-sat bond is reserved during the withdrawal and returned when it settles.",
+    "A fresh address for each deposit — best for privacy. Use the same address only once.":
+      "A fresh address for each deposit — best for privacy. Use the same address only once.",
+    "A self-custody Bitcoin wallet. You hold your keys — Aratiri can't recover them, and can't take them.":
+      "A self-custody Bitcoin wallet. You hold your keys — Aratiri can't recover them, and can't take them.",
+    "Amount (sats) — optional, any amount":
+      "Amount (sats) — optional, any amount",
+    "Aratiri holds your keys.": "Aratiri holds your keys.",
+    "Backup phrase": "Backup phrase",
+    "Backup status": "Backup status",
+    "Backup verified — you have a written copy of your phrase.":
+      "Backup verified — you have a written copy of your phrase.",
+    "Balance as of last sync. Unlock for live data and signing.":
+      "Balance as of last sync. Unlock for live data and signing.",
+    "Balance hidden while locked — unlock to view.":
+      "Balance hidden while locked — unlock to view.",
+    Cancel: "Cancel",
+    "Check it matches the address you expect before continuing. A wrong phrase opens a different wallet.":
+      "Check it matches the address you expect before continuing. A wrong phrase opens a different wallet.",
+    "Checking phrase...": "Checking phrase...",
+    Completed: "Completed",
+    "Confirm address": "Confirm address",
+    "Confirm forget": "Confirm forget",
+    Copied: "Copied",
+    "Copy address": "Copy address",
+    "Copy phrase": "Copy phrase",
+    "Could not generate a deposit address.":
+      "Could not generate a deposit address.",
+    "Could not generate an invoice.": "Could not generate an invoice.",
+    "Create a Spark wallet": "Create a Spark wallet",
+    Custodial: "Custodial",
+    Deposit: "Deposit",
+    "Deposit Bitcoin": "Deposit Bitcoin",
+    "Deposit address": "Deposit address",
+    "Don't screenshot. Don't paste into chat. Write it down now.":
+      "Don't screenshot. Don't paste into chat. Write it down now.",
+    "Each word must be lower-case letters (no spaces or symbols).":
+      "Each word must be lower-case letters (no spaces or symbols).",
+    "Enter your backup phrase. Words are lower-case letters only.":
+      "Enter your backup phrase. Words are lower-case letters only.",
+    "Estimating...": "Estimating...",
+    "Failed to create wallet.": "Failed to create wallet.",
+    "Failed to forget wallet.": "Failed to forget wallet.",
+    "Failed to lock wallet.": "Failed to lock wallet.",
+    "Failed to restore wallet.": "Failed to restore wallet.",
+    "Failed to unlock wallet.": "Failed to unlock wallet.",
+    "Failed to update privacy mode.": "Failed to update privacy mode.",
+    "Fee quote unavailable.": "Fee quote unavailable.",
+    "Forget this wallet": "Forget this wallet",
+    "Forgetting is not a backup. If you lose your phrase, your funds are gone forever.":
+      "Forgetting is not a backup. If you lose your phrase, your funds are gone forever.",
+    "Forgetting...": "Forgetting...",
+    "Generate another": "Generate another",
+    "Generating address...": "Generating address...",
+    "I've written it down": "I've written it down",
+    "I've written it down — mark as backed up":
+      "I've written it down — mark as backed up",
+    "Keep your keys with Spark": "Keep your keys with Spark",
+    "Lightning invoice": "Lightning invoice",
+    "Lock wallet": "Lock wallet",
+    "Locking...": "Locking...",
+    "Maximum fee cap": "Maximum fee cap",
+    "My Spark deposit address": "My Spark deposit address",
+    "Network & account": "Network & account",
+    "No transactions found.": "No transactions found.",
+    "Not backed up yet. Your phrase has not been verified.":
+      "Not backed up yet. Your phrase has not been verified.",
+    "One permanent address. Its key is shared with the payment operator, so single-use addresses are more private.":
+      "One permanent address. Its key is shared with the payment operator, so single-use addresses are more private.",
+    "Pick the word at position {position} of your backup phrase.":
+      "Pick the word at position {position} of your backup phrase.",
+    "Privacy mode": "Privacy mode",
+    "Privacy mode off. Your balance is visible in the locked view.":
+      "Privacy mode off. Your balance is visible in the locked view.",
+    "Privacy mode on. Your balance is hidden until you unlock this wallet.":
+      "Privacy mode on. Your balance is hidden until you unlock this wallet.",
+    "Privacy on": "Privacy on",
+    "Re-estimate Fee": "Re-estimate Fee",
+    "Restore a Spark wallet": "Restore a Spark wallet",
+    "Restore a wallet": "Restore a wallet",
+    "Restore this wallet": "Restore this wallet",
+    "Restoring...": "Restoring...",
+    Reusable: "Reusable",
+    "Self-custody": "Self-custody",
+    "Self-custody wallet": "Self-custody wallet",
+    "Single-use": "Single-use",
+    Spark: "Spark",
+    "Spark fee (0.25% + routing)": "Spark fee (0.25% + routing)",
+    Taproot: "Taproot",
+    "That doesn't look like a valid backup phrase. Check each word.":
+      "That doesn't look like a valid backup phrase. Check each word.",
+    "That's not the word at position {position}. Try again.":
+      "That's not the word at position {position}. Try again.",
+    "The estimated fee exceeds your cap. Payment will be rejected above this cap.":
+      "The estimated fee exceeds your cap. Payment will be rejected above this cap.",
+    "This fee quote has expired. Go back and re-estimate the fee.":
+      "This fee quote has expired. Go back and re-estimate the fee.",
+    "This fee quote has expired. Re-estimate to get fresh fees.":
+      "This fee quote has expired. Re-estimate to get fresh fees.",
+    "This is the wallet you're restoring:":
+      "This is the wallet you're restoring:",
+    "This wallet hides its balance from third parties. Enter your backup phrase to unlock it.":
+      "This wallet hides its balance from third parties. Enter your backup phrase to unlock it.",
+    "This wallet is yours alone.": "This wallet is yours alone.",
+    "Total (amount + fee + 10,000-sat bond) exceeds your available balance of {available} sats.":
+      "Total (amount + fee + 10,000-sat bond) exceeds your available balance of {available} sats.",
+    "Type {address} to confirm.": "Type {address} to confirm.",
+    "Unlock Spark wallet": "Unlock Spark wallet",
+    "Unlock wallet": "Unlock wallet",
+    "Unlock your wallet to generate a deposit address.":
+      "Unlock your wallet to generate a deposit address.",
+    "Unlock your wallet to generate an invoice.":
+      "Unlock your wallet to generate an invoice.",
+    "Verify backup phrase": "Verify backup phrase",
+    "Wallet locked. The mnemonic was cleared from memory.":
+      "Wallet locked. The mnemonic was cleared from memory.",
+    "Wallet restored.": "Wallet restored.",
+    "Wallet type": "Wallet type",
+    "When locked, your balance stays readable on this device. Turning privacy on hides it until you unlock.":
+      "When locked, your balance stays readable on this device. Turning privacy on hides it until you unlock.",
+    Withdrawal: "Withdrawal",
+    "Withdrawal speed": "Withdrawal speed",
+    Word: "Word",
+    "Write down your backup phrase in order. Keep it offline.":
+      "Write down your backup phrase in order. Keep it offline.",
+    "You hold your keys. Aratiri can't recover them.":
+      "You hold your keys. Aratiri can't recover them.",
+    "You pay the network fee on the sending side.":
+      "You pay the network fee on the sending side.",
+    "Your 12-word backup phrase is the only way to access it. If you lose it, no one — not even Aratiri — can help you recover it.":
+      "Your 12-word backup phrase is the only way to access it. If you lose it, no one — not even Aratiri — can help you recover it.",
+    "Your Spark wallet is ready. Here is your address:":
+      "Your Spark wallet is ready. Here is your address:",
+    "Your backup is verified.": "Your backup is verified.",
+    "Your balance isn't visible to third parties or in the locked view. It shows only after you unlock this wallet.":
+      "Your balance isn't visible to third parties or in the locked view. It shows only after you unlock this wallet.",
+    "Your device clock looks wrong. Check that the time and timezone are correct, then try again.":
+      "Your device clock looks wrong. Check that the time and timezone are correct, then try again.",
+    "≈ days": "≈ days",
+    "≈ hours": "≈ hours",
+    "≈ minutes": "≈ minutes",
+    "≈ {fee} sats": "≈ {fee} sats",
   },
   es: {
     "Bitcoin Lightning Wallet": "Billetera Lightning de Bitcoin",
@@ -403,5 +546,149 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "This payment request is unavailable.":
       "Esta solicitud de pago no está disponible.",
     "Open in Wallet": "Abrir en billetera",
+    "A 10,000-sat bond is reserved during the withdrawal and returned when it settles.":
+      "Durante el retiro se reserva un depósito de garantía de 10.000 sats que se devuelve al completarse.",
+    "A fresh address for each deposit — best for privacy. Use the same address only once.":
+      "Una dirección nueva para cada depósito, lo mejor para tu privacidad. Usa la misma dirección solo una vez.",
+    "A self-custody Bitcoin wallet. You hold your keys — Aratiri can't recover them, and can't take them.":
+      "Una billetera de Bitcoin con autocustodia. Tus claves están en tus manos: Aratiri no puede recuperarlas ni tomarlas.",
+    "Amount (sats) — optional, any amount":
+      "Monto (sats): opcional, cualquier monto",
+    "Aratiri holds your keys.": "Aratiri guarda tus claves.",
+    "Backup phrase": "Frase de respaldo",
+    "Backup status": "Estado del respaldo",
+    "Backup verified — you have a written copy of your phrase.":
+      "Respaldo verificado: tienes una copia escrita de tu frase.",
+    "Balance as of last sync. Unlock for live data and signing.":
+      "Saldo según la última sincronización. Desbloquea para ver datos en vivo y firmar.",
+    "Balance hidden while locked — unlock to view.":
+      "Saldo oculto mientras esté bloqueada: desbloquea para verlo.",
+    Cancel: "Cancelar",
+    "Check it matches the address you expect before continuing. A wrong phrase opens a different wallet.":
+      "Verifica que coincida con la dirección que esperas antes de continuar. Una frase incorrecta abre otra billetera.",
+    "Checking phrase...": "Comprobando la frase...",
+    Completed: "Completado",
+    "Confirm address": "Confirmar dirección",
+    "Confirm forget": "Confirmar olvido",
+    Copied: "Copiado",
+    "Copy address": "Copiar dirección",
+    "Copy phrase": "Copiar frase",
+    "Could not generate a deposit address.":
+      "No se pudo generar una dirección de depósito.",
+    "Could not generate an invoice.": "No se pudo generar una factura.",
+    "Create a Spark wallet": "Crear una billetera Spark",
+    Custodial: "Custodiada",
+    Deposit: "Depósito",
+    "Deposit Bitcoin": "Depositar Bitcoin",
+    "Deposit address": "Dirección de depósito",
+    "Don't screenshot. Don't paste into chat. Write it down now.":
+      "No tomes capturas de pantalla. No lo pegues en un chat. Escríbelo ahora.",
+    "Each word must be lower-case letters (no spaces or symbols).":
+      "Cada palabra debe tener solo letras minúsculas (sin espacios ni símbolos).",
+    "Enter your backup phrase. Words are lower-case letters only.":
+      "Ingresa tu frase de respaldo. Solo palabras en minúsculas.",
+    "Estimating...": "Estimando...",
+    "Failed to create wallet.": "No se pudo crear la billetera.",
+    "Failed to forget wallet.": "No se pudo olvidar la billetera.",
+    "Failed to lock wallet.": "No se pudo bloquear la billetera.",
+    "Failed to restore wallet.": "No se pudo restaurar la billetera.",
+    "Failed to unlock wallet.": "No se pudo desbloquear la billetera.",
+    "Failed to update privacy mode.":
+      "No se pudo actualizar el modo de privacidad.",
+    "Fee quote unavailable.": "Cotización de comisión no disponible.",
+    "Forget this wallet": "Olvidar esta billetera",
+    "Forgetting is not a backup. If you lose your phrase, your funds are gone forever.":
+      "Olvidar no es un respaldo. Si pierdes tu frase, tus fondos se pierden para siempre.",
+    "Forgetting...": "Olvidando...",
+    "Generate another": "Generar otra",
+    "Generating address...": "Generando dirección...",
+    "I've written it down": "Lo he escrito",
+    "I've written it down — mark as backed up":
+      "Lo he escrito: marcar como respaldado",
+    "Keep your keys with Spark": "Mantén tus claves con Spark",
+    "Lightning invoice": "Factura Lightning",
+    "Lock wallet": "Bloquear billetera",
+    "Locking...": "Bloqueando...",
+    "Maximum fee cap": "Límite máximo de comisión",
+    "My Spark deposit address": "Mi dirección de depósito Spark",
+    "Network & account": "Red y cuenta",
+    "No transactions found.": "No se encontraron transacciones.",
+    "Not backed up yet. Your phrase has not been verified.":
+      "Aún no respaldada. Tu frase no ha sido verificada.",
+    "One permanent address. Its key is shared with the payment operator, so single-use addresses are more private.":
+      "Una dirección permanente. Su clave se comparte con el operador de pagos, por eso las direcciones de un solo uso son más privadas.",
+    "Pick the word at position {position} of your backup phrase.":
+      "Elige la palabra en la posición {position} de tu frase de respaldo.",
+    "Privacy mode": "Modo de privacidad",
+    "Privacy mode off. Your balance is visible in the locked view.":
+      "Modo de privacidad desactivado. Tu saldo es visible en la vista bloqueada.",
+    "Privacy mode on. Your balance is hidden until you unlock this wallet.":
+      "Modo de privacidad activado. Tu saldo estará oculto hasta que desbloquees esta billetera.",
+    "Privacy on": "Privacidad activada",
+    "Re-estimate Fee": "Re-estimar comisión",
+    "Restore a Spark wallet": "Restaurar una billetera Spark",
+    "Restore a wallet": "Restaurar una billetera",
+    "Restore this wallet": "Restaurar esta billetera",
+    "Restoring...": "Restaurando...",
+    Reusable: "Reutilizable",
+    "Self-custody": "Autocustodia",
+    "Self-custody wallet": "Billetera de autocustodia",
+    "Single-use": "De un solo uso",
+    Spark: "Spark",
+    "Spark fee (0.25% + routing)": "Comisión Spark (0,25 % + enrutamiento)",
+    Taproot: "Taproot",
+    "That doesn't look like a valid backup phrase. Check each word.":
+      "Eso no parece una frase de respaldo válida. Revisa cada palabra.",
+    "That's not the word at position {position}. Try again.":
+      "Esa no es la palabra en la posición {position}. Inténtalo de nuevo.",
+    "The estimated fee exceeds your cap. Payment will be rejected above this cap.":
+      "La comisión estimada supera tu límite. El pago se rechazará por encima de este límite.",
+    "This fee quote has expired. Go back and re-estimate the fee.":
+      "Esta cotización de comisión ha vencido. Vuelve atrás y vuelve a estimar la comisión.",
+    "This fee quote has expired. Re-estimate to get fresh fees.":
+      "Esta cotización de comisión ha vencido. Vuelve a estimarla para obtener comisiones actualizadas.",
+    "This is the wallet you're restoring:":
+      "Esta es la billetera que vas a restaurar:",
+    "This wallet hides its balance from third parties. Enter your backup phrase to unlock it.":
+      "Esta billetera oculta su saldo a terceros. Ingresa tu frase de respaldo para desbloquearla.",
+    "This wallet is yours alone.": "Esta billetera es solo tuya.",
+    "Total (amount + fee + 10,000-sat bond) exceeds your available balance of {available} sats.":
+      "El total (monto + comisión + depósito de garantía de 10.000 sats) supera tu saldo disponible de {available} sats.",
+    "Type {address} to confirm.": "Escribe {address} para confirmar.",
+    "Unlock Spark wallet": "Desbloquear billetera Spark",
+    "Unlock wallet": "Desbloquear billetera",
+    "Unlock your wallet to generate a deposit address.":
+      "Desbloquea tu billetera para generar una dirección de depósito.",
+    "Unlock your wallet to generate an invoice.":
+      "Desbloquea tu billetera para generar una factura.",
+    "Verify backup phrase": "Verificar frase de respaldo",
+    "Wallet locked. The mnemonic was cleared from memory.":
+      "Billetera bloqueada. La frase mnemotécnica se eliminó de la memoria.",
+    "Wallet restored.": "Billetera restaurada.",
+    "Wallet type": "Tipo de billetera",
+    "When locked, your balance stays readable on this device. Turning privacy on hides it until you unlock.":
+      "Mientras está bloqueada, tu saldo sigue siendo legible en este dispositivo. Al activar la privacidad, se oculta hasta que desbloquees.",
+    Withdrawal: "Retiro",
+    "Withdrawal speed": "Velocidad del retiro",
+    Word: "Palabra",
+    "Write down your backup phrase in order. Keep it offline.":
+      "Escribe tu frase de respaldo en orden. Mantenla fuera de línea.",
+    "You hold your keys. Aratiri can't recover them.":
+      "Tus claves están en tus manos. Aratiri no puede recuperarlas.",
+    "You pay the network fee on the sending side.":
+      "Pagas la comisión de red del lado del envío.",
+    "Your 12-word backup phrase is the only way to access it. If you lose it, no one — not even Aratiri — can help you recover it.":
+      "Tu frase de respaldo de 12 palabras es la única forma de acceder. Si la pierdes, nadie, ni siquiera Aratiri, podrá ayudarte a recuperarla.",
+    "Your Spark wallet is ready. Here is your address:":
+      "Tu billetera Spark está lista. Esta es tu dirección:",
+    "Your backup is verified.": "Tu respaldo está verificado.",
+    "Your balance isn't visible to third parties or in the locked view. It shows only after you unlock this wallet.":
+      "Tu saldo no es visible para terceros ni en la vista bloqueada. Solo se muestra después de desbloquear esta billetera.",
+    "Your device clock looks wrong. Check that the time and timezone are correct, then try again.":
+      "El reloj de tu dispositivo parece incorrecto. Verifica que la hora y la zona horaria sean correctas e inténtalo de nuevo.",
+    "≈ days": "≈ días",
+    "≈ hours": "≈ horas",
+    "≈ minutes": "≈ minutos",
+    "≈ {fee} sats": "≈ {fee} sats",
   },
 };
