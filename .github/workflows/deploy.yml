@@ -1,4 +1,4 @@
-name: Aratiri Frontend Build Check
+name: Aratiri Frontend Build Check & Publish
 on:
   push:
     branches: ["main"]
@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
   build:
@@ -23,3 +24,33 @@ jobs:
         run: npm ci
       - name: Build application
         run: npm run build
+
+  publish-image:
+    # Images only from main; never from forks/PRs.
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: dockerfile
+          push: true
+          tags: |
+            ghcr.io/diegoyegros/aratiri-frontend:latest
+            ghcr.io/diegoyegros/aratiri-frontend:${{ github.sha }}
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=${{ vars.NEXT_PUBLIC_API_BASE_URL || 'http://167.233.193.136:2100/v1' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
