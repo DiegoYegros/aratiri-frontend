@@ -147,6 +147,8 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "24 hours": "24 hours",
     "7 days": "7 days",
     Pending: "Pending",
+    Preparing: "Preparing",
+    Cancelling: "Cancelling",
     Paid: "Paid",
     Expired: "Expired",
     Cancelled: "Cancelled",
@@ -163,6 +165,8 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "Request Details": "Request Details",
     "Loading request...": "Loading request...",
     "Failed to load request.": "Failed to load request.",
+    "Checking status": "Checking status",
+    Retry: "Retry",
     Created: "Created",
     Expires: "Expires",
     "Paid at": "Paid at",
@@ -181,14 +185,23 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "Cancelling...": "Cancelling...",
     "Request cancelled": "Request cancelled",
     "Failed to cancel request.": "Failed to cancel request.",
+    "This create request conflicts with a previous attempt. Change the form or try again.":
+      "This create request conflicts with a previous attempt. Change the form or try again.",
     "Loading payment": "Loading payment",
     "Loading payment...": "Loading payment...",
     "Failed to load payment.": "Failed to load payment.",
     "Payment request not found.": "Payment request not found.",
     "This request has been paid.": "This request has been paid.",
     "This payment request has expired.": "This payment request has expired.",
+    "This payment request has expired. Confirming status...":
+      "This payment request has expired. Confirming status...",
     "This payment request was cancelled.":
       "This payment request was cancelled.",
+    "This payment request is being prepared.":
+      "This payment request is being prepared.",
+    "This payment request is being cancelled.":
+      "This payment request is being cancelled.",
+    "This payment request failed.": "This payment request failed.",
     "This payment request is unavailable.":
       "This payment request is unavailable.",
     "Open in Wallet": "Open in Wallet",
@@ -332,6 +345,8 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "24 hours": "24 horas",
     "7 days": "7 días",
     Pending: "Pendiente",
+    Preparing: "Preparando",
+    Cancelling: "Cancelando",
     Paid: "Pagada",
     Expired: "Vencida",
     Cancelled: "Cancelada",
@@ -348,6 +363,8 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "Request Details": "Detalles de la solicitud",
     "Loading request...": "Cargando solicitud...",
     "Failed to load request.": "No se pudo cargar la solicitud.",
+    "Checking status": "Comprobando estado",
+    Retry: "Reintentar",
     Created: "Creada",
     Expires: "Vence",
     "Paid at": "Pagada el",
@@ -366,14 +383,23 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "Cancelling...": "Cancelando...",
     "Request cancelled": "Solicitud cancelada",
     "Failed to cancel request.": "No se pudo cancelar la solicitud.",
+    "This create request conflicts with a previous attempt. Change the form or try again.":
+      "Esta creación entra en conflicto con un intento anterior. Cambia el formulario o inténtalo de nuevo.",
     "Loading payment": "Cargando pago",
     "Loading payment...": "Cargando pago...",
     "Failed to load payment.": "No se pudo cargar el pago.",
     "Payment request not found.": "Solicitud de pago no encontrada.",
     "This request has been paid.": "Esta solicitud ya fue pagada.",
     "This payment request has expired.": "Esta solicitud de pago ha vencido.",
+    "This payment request has expired. Confirming status...":
+      "Esta solicitud de pago ha vencido. Confirmando estado...",
     "This payment request was cancelled.":
       "Esta solicitud de pago fue cancelada.",
+    "This payment request is being prepared.":
+      "Esta solicitud de pago se está preparando.",
+    "This payment request is being cancelled.":
+      "Esta solicitud de pago se está cancelando.",
+    "This payment request failed.": "Esta solicitud de pago falló.",
     "This payment request is unavailable.":
       "Esta solicitud de pago no está disponible.",
     "Open in Wallet": "Abrir en billetera",

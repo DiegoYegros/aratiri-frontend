@@ -1,12 +1,22 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Dashboard } from "@/app/components/dashboard/Dashboard";
 import { RequestCenter } from "@/app/components/dashboard/RequestCenter";
 import { RequestDetailModal } from "@/app/components/dashboard/RequestDetailModal";
 import { LanguageProvider } from "@/app/LanguageProvider";
 import type { PaymentRequest } from "@/app/lib/api";
-import { PAYMENT_REQUEST_POLL_INTERVAL_MS } from "@/app/lib/paymentRequests";
+import {
+  PAYMENT_REQUEST_POLL_INTERVAL_MS,
+  PAYMENT_REQUEST_TERMINAL_RECONCILE_INTERVAL_MS,
+} from "@/app/lib/paymentRequests";
 
 const apiCall = vi.fn();
 
@@ -873,7 +883,7 @@ describe("RequestDetailModal polling", () => {
     expect(detailCalls().length).toBe(callsAfterOpen);
   });
 
-  it("stops scheduling polls after cancel", async () => {
+  it("keeps bounded terminal reconciliation after cancel (does not use OPEN interval)", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     apiCall.mockImplementation(async (endpoint: string, options?: RequestInit) => {
       if (endpoint === "/payment-requests/req-1" && options?.method === "POST") {
@@ -911,9 +921,17 @@ describe("RequestDetailModal polling", () => {
 
     const callsAfterCancel = detailCalls().length;
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(PAYMENT_REQUEST_POLL_INTERVAL_MS * 3);
+      await vi.advanceTimersByTimeAsync(PAYMENT_REQUEST_POLL_INTERVAL_MS);
     });
+    // OPEN interval must not fire; terminal reconcile is slower.
     expect(detailCalls().length).toBe(callsAfterCancel);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(
+        PAYMENT_REQUEST_TERMINAL_RECONCILE_INTERVAL_MS
+      );
+    });
+    expect(detailCalls().length).toBeGreaterThan(callsAfterCancel);
   });
 
   it("retries OPEN refresh errors without overlapping in-flight polls", async () => {
@@ -969,7 +987,7 @@ describe("RequestDetailModal polling", () => {
     expect(screen.getByText("Pending")).toBeInTheDocument();
   });
 
-  it("ignores in-flight OPEN GET after cancel (does not onUpdated/restart poll)", async () => {
+  it("ignores in-flight OPEN GET after cancel (does not onUpdated/regress; may reconcile later)", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     let resolveDetail: ((value: PaymentRequest) => void) | undefined;
     let detailHits = 0;
@@ -988,8 +1006,15 @@ describe("RequestDetailModal polling", () => {
         if (detailHits === 1) {
           return sampleRequest({ status: "OPEN" });
         }
-        return new Promise<PaymentRequest>((resolve) => {
-          resolveDetail = resolve;
+        if (detailHits === 2) {
+          return new Promise<PaymentRequest>((resolve) => {
+            resolveDetail = resolve;
+          });
+        }
+        return sampleRequest({
+          status: "cancelled",
+          cancelled_at: "2026-07-01T13:00:00Z",
+          payment_request: null,
         });
       }
       return {};
@@ -1021,7 +1046,6 @@ describe("RequestDetailModal polling", () => {
     await user.click(screen.getByRole("button", { name: "Cancel Request" }));
     await user.click(screen.getByRole("button", { name: "Confirm Cancel" }));
     expect(await screen.findByText("Cancelled")).toBeInTheDocument();
-    const callsAfterCancel = detailHits;
     onUpdated.mockClear();
 
     await act(async () => {
@@ -1031,10 +1055,24 @@ describe("RequestDetailModal polling", () => {
     expect(screen.getByText("Cancelled")).toBeInTheDocument();
     expect(onUpdated).not.toHaveBeenCalled();
 
+    // Allow cancel's immediate reconcile / pending-load drain to settle.
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(PAYMENT_REQUEST_POLL_INTERVAL_MS * 3);
+      await Promise.resolve();
     });
-    expect(detailHits).toBe(callsAfterCancel);
+    const callsAfterStaleIgnored = detailHits;
+
+    // Stale OPEN resolution must not restart the fast OPEN poll interval.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(PAYMENT_REQUEST_POLL_INTERVAL_MS);
+    });
+    expect(detailHits).toBe(callsAfterStaleIgnored);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(
+        PAYMENT_REQUEST_TERMINAL_RECONCILE_INTERVAL_MS
+      );
+    });
+    expect(detailHits).toBeGreaterThan(callsAfterStaleIgnored);
   });
 
   it("ignores in-flight OPEN GET after list PAID sync (does not onUpdated/restart poll)", async () => {
@@ -1749,5 +1787,424 @@ describe("RequestCenter monotonic terminal status", () => {
       expect(paidBadges.length).toBeGreaterThanOrEqual(2);
     });
     expect(screen.queryByText("Expired")).not.toBeInTheDocument();
+  });
+});
+
+describe("RequestCenter autonomous list polling + detail edge cases", () => {
+  beforeEach(() => {
+    apiCall.mockReset();
+    sockets.length = 0;
+    vi.stubGlobal("WebSocket", MockWebSocket as unknown as typeof WebSocket);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    Object.defineProperty(document, "hidden", {
+      configurable: true,
+      get: () => false,
+    });
+  });
+
+  const listCalls = () =>
+    apiCall.mock.calls.filter(([ep]) =>
+      String(ep).startsWith("/payment-requests?")
+    );
+
+  it("autonomously advances OPEN → stale OPEN → PAID without a second WebSocket", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let listHits = 0;
+    apiCall.mockImplementation(async (endpoint: string) => {
+      if (String(endpoint).startsWith("/payment-requests?")) {
+        listHits += 1;
+        if (listHits <= 2) {
+          return {
+            payment_requests: [sampleRequest({ status: "OPEN" })],
+            next_cursor: null,
+            has_more: false,
+          };
+        }
+        return {
+          payment_requests: [
+            sampleRequest({
+              status: "PAID",
+              paid_at: "2026-07-01T13:00:00Z",
+              payment_request: null,
+            }),
+          ],
+          next_cursor: null,
+          has_more: false,
+        };
+      }
+      return {};
+    });
+
+    render(
+      <LanguageProvider>
+        <RequestCenter
+          balanceVisible
+          onToggleBalanceVisibility={vi.fn()}
+          registerRefresh={vi.fn()}
+        />
+      </LanguageProvider>
+    );
+
+    expect(await screen.findByText("Pending")).toBeInTheDocument();
+    expect(listHits).toBe(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(PAYMENT_REQUEST_POLL_INTERVAL_MS);
+    });
+    await waitFor(() => expect(listHits).toBe(2));
+    expect(screen.getByText("Pending")).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(PAYMENT_REQUEST_POLL_INTERVAL_MS);
+    });
+    await waitFor(() => expect(screen.getByText("Paid")).toBeInTheDocument());
+    expect(listHits).toBe(3);
+
+    const afterPaid = listHits;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(PAYMENT_REQUEST_POLL_INTERVAL_MS * 2);
+    });
+    expect(listHits).toBe(afterPaid);
+    expect(sockets.length).toBe(0);
+  });
+
+  it("resumes list polling on visibility/focus after pause", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    apiCall.mockImplementation(async (endpoint: string) => {
+      if (String(endpoint).startsWith("/payment-requests?")) {
+        return {
+          payment_requests: [sampleRequest({ status: "OPEN" })],
+          next_cursor: null,
+          has_more: false,
+        };
+      }
+      return {};
+    });
+
+    render(
+      <LanguageProvider>
+        <RequestCenter
+          balanceVisible
+          onToggleBalanceVisibility={vi.fn()}
+          registerRefresh={vi.fn()}
+        />
+      </LanguageProvider>
+    );
+
+    expect(await screen.findByText("Pending")).toBeInTheDocument();
+    const afterInitial = listCalls().length;
+
+    Object.defineProperty(document, "hidden", {
+      configurable: true,
+      get: () => true,
+    });
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(PAYMENT_REQUEST_POLL_INTERVAL_MS * 2);
+    });
+    expect(listCalls().length).toBe(afterInitial);
+
+    Object.defineProperty(document, "hidden", {
+      configurable: true,
+      get: () => false,
+    });
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    await waitFor(() =>
+      expect(listCalls().length).toBeGreaterThan(afterInitial)
+    );
+  });
+
+  it("applies local expiry in open detail without QR/cancel while list is OPEN", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-07-01T12:00:00.000Z"));
+    const expiresAt = new Date(Date.now() + 1_500).toISOString();
+    const openExpiring = sampleRequest({
+      status: "OPEN",
+      expires_at: expiresAt,
+    });
+
+    apiCall.mockImplementation(async (endpoint: string) => {
+      if (String(endpoint) === "/payment-requests/req-1") {
+        return openExpiring;
+      }
+      if (String(endpoint).startsWith("/payment-requests?")) {
+        return {
+          payment_requests: [openExpiring],
+          next_cursor: null,
+          has_more: false,
+        };
+      }
+      return {};
+    });
+
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(
+      <LanguageProvider>
+        <RequestCenter
+          balanceVisible
+          onToggleBalanceVisibility={vi.fn()}
+          registerRefresh={vi.fn()}
+        />
+      </LanguageProvider>
+    );
+
+    expect(await screen.findByText("Pending")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: /View request for 2,500 sats/i })
+    );
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByTestId("local-qr")).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Cancel Request" })
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+
+    expect(within(dialog).queryByTestId("local-qr")).not.toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole("button", { name: "Cancel Request" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("handles cancel 200 returning CANCELLED", async () => {
+    cleanup();
+    apiCall.mockImplementation(async (endpoint: string) => {
+      if (endpoint === "/payment-requests/req-cancel-200/cancel") {
+        return sampleRequest({
+          public_id: "req-cancel-200",
+          status: "CANCELLED",
+          cancelled_at: "2026-07-01T13:00:00Z",
+          payment_request: null,
+        });
+      }
+      return sampleRequest({ public_id: "req-cancel-200", status: "OPEN" });
+    });
+
+    const user = userEvent.setup();
+    render(
+      <LanguageProvider>
+        <RequestDetailModal
+          publicId="req-cancel-200"
+          balanceVisible
+          listRequest={sampleRequest({
+            public_id: "req-cancel-200",
+            status: "OPEN",
+          })}
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />
+      </LanguageProvider>
+    );
+
+    expect(await screen.findByText("Pending")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancel Request" }));
+    await user.click(screen.getByRole("button", { name: "Confirm Cancel" }));
+    expect(await screen.findByText("Cancelled")).toBeInTheDocument();
+  });
+
+  it("handles cancel 409 by refreshing to CANCELLED", async () => {
+    cleanup();
+    let cancelAttempted = false;
+    apiCall.mockImplementation(async (endpoint: string) => {
+      if (endpoint === "/payment-requests/req-cancel-409/cancel") {
+        cancelAttempted = true;
+        throw Object.assign(new Error("Conflict"), { status: 409 });
+      }
+      if (String(endpoint) === "/payment-requests/req-cancel-409") {
+        if (cancelAttempted) {
+          return sampleRequest({
+            public_id: "req-cancel-409",
+            status: "CANCELLED",
+            cancelled_at: "2026-07-01T13:00:00Z",
+            payment_request: null,
+          });
+        }
+        return sampleRequest({ public_id: "req-cancel-409", status: "OPEN" });
+      }
+      return {};
+    });
+
+    const user = userEvent.setup();
+    render(
+      <LanguageProvider>
+        <RequestDetailModal
+          publicId="req-cancel-409"
+          balanceVisible
+          listRequest={sampleRequest({
+            public_id: "req-cancel-409",
+            status: "OPEN",
+          })}
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />
+      </LanguageProvider>
+    );
+
+    expect(await screen.findByText("Pending")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancel Request" }));
+    await user.click(screen.getByRole("button", { name: "Confirm Cancel" }));
+    expect(await screen.findByText("Cancelled")).toBeInTheDocument();
+  });
+
+  it("handles transient cancel with local uncertainty then OPEN heals", async () => {
+    cleanup();
+    let cancelAttempted = false;
+    let releaseRefresh: (() => void) | undefined;
+    let refreshGate: Promise<void> | null = null;
+    const onUpdated = vi.fn();
+    apiCall.mockImplementation(async (endpoint: string) => {
+      if (endpoint === "/payment-requests/req-cancel-503/cancel") {
+        cancelAttempted = true;
+        refreshGate = new Promise<void>((resolve) => {
+          releaseRefresh = () => resolve();
+        });
+        throw Object.assign(new Error("Service unavailable"), { status: 503 });
+      }
+      if (String(endpoint) === "/payment-requests/req-cancel-503") {
+        if (cancelAttempted && refreshGate) {
+          await refreshGate;
+        }
+        return sampleRequest({ public_id: "req-cancel-503", status: "OPEN" });
+      }
+      return {};
+    });
+
+    const user = userEvent.setup();
+    render(
+      <LanguageProvider>
+        <RequestDetailModal
+          publicId="req-cancel-503"
+          balanceVisible
+          listRequest={sampleRequest({
+            public_id: "req-cancel-503",
+            status: "OPEN",
+          })}
+          onClose={vi.fn()}
+          onUpdated={onUpdated}
+        />
+      </LanguageProvider>
+    );
+
+    expect(await screen.findByText("Pending")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancel Request" }));
+    await user.click(screen.getByRole("button", { name: "Confirm Cancel" }));
+    expect(await screen.findAllByText("Cancelling")).not.toHaveLength(0);
+    expect(screen.getByText("Pending")).toBeInTheDocument();
+    expect(screen.queryByTestId("local-qr")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cancel Request" })
+    ).not.toBeInTheDocument();
+    expect(
+      onUpdated.mock.calls.some(
+        ([req]) =>
+          String((req as PaymentRequest).status).toUpperCase() ===
+          "CANCEL_PENDING"
+      )
+    ).toBe(false);
+
+    const unlockRefresh = releaseRefresh;
+    expect(unlockRefresh).toBeDefined();
+    unlockRefresh!();
+    expect(await screen.findByTestId("local-qr")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Cancel Request" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Pending")).toBeInTheDocument();
+  });
+
+  it("shows transitional PROVISIONING / CANCEL_PENDING / FAILED without payability", async () => {
+    cleanup();
+    apiCall.mockResolvedValue(
+      sampleRequest({ status: "PROVISIONING", payment_request: null })
+    );
+    const { rerender } = render(
+      <LanguageProvider>
+        <RequestDetailModal
+          publicId="req-1"
+          balanceVisible
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />
+      </LanguageProvider>
+    );
+    expect(await screen.findByText("Preparing")).toBeInTheDocument();
+    expect(screen.queryByTestId("local-qr")).not.toBeInTheDocument();
+
+    apiCall.mockResolvedValue(
+      sampleRequest({ status: "CANCEL_PENDING", payment_request: null })
+    );
+    rerender(
+      <LanguageProvider>
+        <RequestDetailModal
+          publicId="req-2"
+          balanceVisible
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />
+      </LanguageProvider>
+    );
+    expect(await screen.findByText("Cancelling")).toBeInTheDocument();
+    expect(screen.queryByTestId("local-qr")).not.toBeInTheDocument();
+
+    apiCall.mockResolvedValue(
+      sampleRequest({ status: "FAILED", payment_request: null })
+    );
+    rerender(
+      <LanguageProvider>
+        <RequestDetailModal
+          publicId="req-3"
+          balanceVisible
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />
+      </LanguageProvider>
+    );
+    expect(await screen.findByText("Failed")).toBeInTheDocument();
+    expect(screen.queryByTestId("local-qr")).not.toBeInTheDocument();
+  });
+
+  it("stops detail polling on unmount", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let detailHits = 0;
+    apiCall.mockImplementation(async (endpoint: string) => {
+      if (String(endpoint) === "/payment-requests/req-1") {
+        detailHits += 1;
+        return sampleRequest({ status: "OPEN" });
+      }
+      return {};
+    });
+
+    const { unmount } = render(
+      <LanguageProvider>
+        <RequestDetailModal
+          publicId="req-1"
+          balanceVisible
+          listRequest={sampleRequest({ status: "OPEN" })}
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+        />
+      </LanguageProvider>
+    );
+
+    expect(await screen.findByText("Pending")).toBeInTheDocument();
+    await waitFor(() => expect(detailHits).toBeGreaterThanOrEqual(1));
+    const afterMount = detailHits;
+    unmount();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(PAYMENT_REQUEST_POLL_INTERVAL_MS * 3);
+    });
+    expect(detailHits).toBe(afterMount);
   });
 });

@@ -4,13 +4,27 @@ import { Check, ClipboardCopy, Share2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { apiCall, PaymentRequest } from "../../lib/api";
 import {
+  clearPaymentRequestInvoiceIfNotOpen,
+  getActivePaymentRequestPollIntervalMs,
+  getEffectivePaymentRequestStatus,
+  getErrorStatus,
+  getMsUntilPaymentRequestLocalExpiry,
+  getNextPaymentRequestBackoffMs,
+  PAYMENT_REQUEST_MAX_TIMER_MS,
   getPaymentRequestShareUrl,
+  isActiveReconcilableStatus,
   isCancellablePaymentRequest,
+  isFinalPaymentRequestStatus,
+  isPayablePaymentRequest,
+  isTerminalReconcilableStatus,
+  isTransientPaymentRequestError,
   mergePaymentRequestMonotonic,
+  needsPaymentRequestReconciliation,
   normalizePaymentRequestStatus,
-  PAYMENT_REQUEST_POLL_INTERVAL_MS,
+  PAYMENT_REQUEST_TERMINAL_RECONCILE_INTERVAL_MS,
+  PAYMENT_REQUEST_TERMINAL_RECONCILE_WINDOW_MS,
+  paymentRequestStatusLabelKey,
   PaymentRequestStatus,
-  shouldAcceptPaymentRequestStatusUpdate,
 } from "../../lib/paymentRequests";
 import { formatSats } from "../../lib/format";
 import { useTranslation } from "@/app/hooks/useTranslation";
@@ -29,18 +43,14 @@ interface RequestDetailModalProps {
   onUpdated: (request: PaymentRequest) => void;
 }
 
-const statusLabelKey: Record<PaymentRequestStatus, string> = {
-  pending: "Pending",
-  paid: "Paid",
-  expired: "Expired",
-  cancelled: "Cancelled",
-};
-
 const statusBadgeClass: Record<PaymentRequestStatus | "unknown", string> = {
-  pending: "bg-accent-subtle text-pending border-accent/30",
+  provisioning: "bg-accent-subtle text-pending border-accent/30",
+  open: "bg-accent-subtle text-pending border-accent/30",
+  cancel_pending: "bg-accent-subtle text-pending border-accent/30",
   paid: "bg-success-bg text-success border-success/30",
   expired: "bg-panel-elevated text-muted border-panel-edge",
   cancelled: "bg-danger-bg text-danger border-danger/30",
+  failed: "bg-danger-bg text-danger border-danger/30",
   unknown: "bg-panel-elevated text-muted border-panel-edge",
 };
 
@@ -83,25 +93,40 @@ export const RequestDetailModal = ({
   const [request, setRequest] = useState<PaymentRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [checkingStatus, setCheckingStatus] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState("");
+  /**
+   * Local-only: transient cancel left outcome unknown. Hides QR/cancel without
+   * writing CANCEL_PENDING into request status (avoids monotonic poison).
+   */
+  const [cancelUncertain, setCancelUncertain] = useState(false);
   const [copiedField, setCopiedField] = useState<"link" | "invoice" | null>(
     null
   );
   const [showShareButton, setShowShareButton] = useState(false);
   const [feedback, setFeedback] = useState("");
-  /** Latest known status for poll decisions (detail load, list sync, cancel). */
-  const knownStatusRef = useRef<PaymentRequestStatus | "unknown">("unknown");
-  /** Mirrors detail state for material-change checks without stale closures. */
+  /** Forces re-render when local expiry crosses without a network update. */
+  const [, setExpiryTick] = useState(0);
+
   const requestRef = useRef<PaymentRequest | null>(null);
-  const clearPollRef = useRef<(() => void) | null>(null);
+  const cancelUncertainRef = useRef(false);
+  const pollStartedAtRef = useRef<number | null>(null);
+  const terminalSeenAtRef = useRef<number | null>(null);
+  const backoffMsRef = useRef<number | null>(null);
   /**
-   * Bumped on terminal transitions so any in-flight GET started while OPEN is
-   * ignored after cancel or list/WebSocket terminal sync.
+   * Bumped on unmount, publicId change, and status transitions so in-flight
+   * GETs started under a prior generation are ignored.
    */
   const loadGenerationRef = useRef(0);
-  const invalidateInFlightLoadsRef = useRef<(() => void) | null>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const expiryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inFlightRef = useRef(false);
+  const loadRef = useRef<
+    ((opts: { isRefresh: boolean; manual?: boolean }) => Promise<void>) | null
+  >(null);
+  const schedulePollRef = useRef<((delayMs: number) => void) | null>(null);
 
   useEffect(() => {
     if (typeof navigator.share === "function") {
@@ -109,130 +134,336 @@ export const RequestDetailModal = ({
     }
   }, []);
 
+  const applyRequest = (
+    incoming: PaymentRequest,
+    { notify }: { notify: boolean }
+  ): PaymentRequest => {
+    const baseline = requestRef.current;
+    const merged = baseline
+      ? mergePaymentRequestMonotonic(baseline, incoming)
+      : clearPaymentRequestInvoiceIfNotOpen(incoming);
+    const changed = !baseline || !isMateriallySameRequest(baseline, merged);
+    requestRef.current = merged;
+    setRequest(merged);
+
+    // Authoritative merge: drop local cancel uncertainty so OPEN can heal.
+    if (cancelUncertainRef.current) {
+      cancelUncertainRef.current = false;
+      setCancelUncertain(false);
+      setFeedback((current) =>
+        current === t("Cancelling") ? "" : current
+      );
+    }
+
+    const effective = getEffectivePaymentRequestStatus(merged);
+    if (isFinalPaymentRequestStatus(effective)) {
+      terminalSeenAtRef.current = null;
+      pollStartedAtRef.current = null;
+    } else if (isTerminalReconcilableStatus(effective)) {
+      if (terminalSeenAtRef.current === null) {
+        terminalSeenAtRef.current = Date.now();
+      }
+    } else if (isActiveReconcilableStatus(effective)) {
+      terminalSeenAtRef.current = null;
+    }
+
+    if (changed && notify) {
+      onUpdatedRef.current(merged);
+    }
+    return merged;
+  };
+
   // Apply list/WebSocket refreshes without a second socket or loading flicker.
-  // Stale OPEN rows must not regress a known terminal detail (or restart poll/QR).
   useEffect(() => {
     if (!listRequest || listRequest.public_id !== publicId) return;
 
     const baseline = requestRef.current;
-    const known = knownStatusRef.current;
-    const currentStatus =
-      known !== "unknown" ? known : (baseline?.status ?? listRequest.status);
+    const currentStatus = baseline?.status ?? listRequest.status;
+    const merged = baseline
+      ? mergePaymentRequestMonotonic(baseline, listRequest)
+      : clearPaymentRequestInvoiceIfNotOpen(listRequest);
 
-    if (
-      !shouldAcceptPaymentRequestStatusUpdate(
-        currentStatus,
-        listRequest.status
-      )
-    ) {
+    // Stale OPEN (or other rejected) rows must not regress detail.
+    if (baseline && merged === baseline && baseline.status !== listRequest.status) {
       setLoading(false);
       setError("");
       return;
     }
 
-    const merged = baseline
-      ? mergePaymentRequestMonotonic(baseline, listRequest)
-      : listRequest;
-
     if (!baseline || !isMateriallySameRequest(baseline, merged)) {
-      requestRef.current = merged;
-      setRequest(merged);
+      const beforeStatus = baseline
+        ? normalizePaymentRequestStatus(baseline.status)
+        : "unknown";
+      const afterStatus = normalizePaymentRequestStatus(merged.status);
+      if (
+        beforeStatus !== afterStatus &&
+        (isActiveReconcilableStatus(afterStatus) ||
+          isTerminalReconcilableStatus(afterStatus) ||
+          isFinalPaymentRequestStatus(afterStatus))
+      ) {
+        loadGenerationRef.current += 1;
+      }
+      applyRequest(listRequest, { notify: false });
+    } else if (!baseline) {
+      applyRequest(listRequest, { notify: false });
+    } else {
+      // Touch effective/terminal tracking even when materially same.
+      void currentStatus;
     }
 
-    const status = normalizePaymentRequestStatus(merged.status);
-    knownStatusRef.current = status;
-    if (status !== "pending") {
-      invalidateInFlightLoadsRef.current?.();
-      clearPollRef.current?.();
-    }
     setLoading(false);
     setError("");
+    setCheckingStatus(false);
+    schedulePollRef.current?.(0);
+    // applyRequest is stable in behavior via refs; listing it would re-fire every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
   }, [listRequest, publicId]);
 
   useEffect(() => {
     let cancelled = false;
-    let inFlight = false;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    loadGenerationRef.current += 1;
+    inFlightRef.current = false;
+    backoffMsRef.current = null;
+    pollStartedAtRef.current = null;
+    terminalSeenAtRef.current = null;
+    requestRef.current = null;
+    setRequest(null);
+    setLoading(true);
+    setError("");
+    setCheckingStatus(false);
+    setCancelConfirm(false);
+    setCancelError("");
+    cancelUncertainRef.current = false;
+    setCancelUncertain(false);
 
-    const clearPoll = () => {
-      if (timeoutId !== null) {
-        clearTimeout(timeoutId);
-        timeoutId = null;
+    const clearPollTimer = () => {
+      if (pollTimerRef.current !== null) {
+        clearTimeout(pollTimerRef.current);
+        pollTimerRef.current = null;
       }
     };
-    clearPollRef.current = clearPoll;
 
-    const invalidateInFlightLoads = () => {
-      loadGenerationRef.current += 1;
+    const clearExpiryTimer = () => {
+      if (expiryTimerRef.current !== null) {
+        clearTimeout(expiryTimerRef.current);
+        expiryTimerRef.current = null;
+      }
     };
-    invalidateInFlightLoadsRef.current = invalidateInFlightLoads;
 
-    const schedulePoll = () => {
-      clearPoll();
+    const isDocumentHidden = () =>
+      typeof document !== "undefined" && document.hidden;
+
+    const detailNeedsPoll = (
+      current: PaymentRequest | null,
+      now: number
+    ): { needed: boolean; useTerminalInterval: boolean } => {
+      if (!current) return { needed: false, useTerminalInterval: false };
+      if (!needsPaymentRequestReconciliation(current, now)) {
+        return { needed: false, useTerminalInterval: false };
+      }
+      const effective = getEffectivePaymentRequestStatus(current, now);
+      if (isActiveReconcilableStatus(effective)) {
+        return { needed: true, useTerminalInterval: false };
+      }
+      if (isTerminalReconcilableStatus(effective)) {
+        const seenAt = terminalSeenAtRef.current ?? now;
+        if (terminalSeenAtRef.current === null) {
+          terminalSeenAtRef.current = seenAt;
+        }
+        if (now - seenAt <= PAYMENT_REQUEST_TERMINAL_RECONCILE_WINDOW_MS) {
+          return { needed: true, useTerminalInterval: true };
+        }
+      }
+      return { needed: false, useTerminalInterval: false };
+    };
+
+    const scheduleExpiryTick = () => {
+      clearExpiryTimer();
       if (cancelled) return;
-      // Only poll while the latest known status is still OPEN/pending.
-      if (knownStatusRef.current !== "pending") return;
-      timeoutId = setTimeout(() => {
-        void load({ isRefresh: true });
-      }, PAYMENT_REQUEST_POLL_INTERVAL_MS);
+      const current = requestRef.current;
+      if (!current) return;
+      const ms = getMsUntilPaymentRequestLocalExpiry(current, Date.now());
+      if (ms === null || ms <= 0) return;
+      expiryTimerRef.current = setTimeout(() => {
+        if (cancelled) return;
+        setExpiryTick((n) => n + 1);
+        scheduleExpiryTick();
+        schedulePoll(0);
+      }, Math.min(ms, PAYMENT_REQUEST_MAX_TIMER_MS));
     };
 
-    const load = async ({ isRefresh }: { isRefresh: boolean }) => {
-      if (cancelled || inFlight) return;
-      inFlight = true;
+    /** Queued when schedulePoll/runPoll/load hits an in-flight GET. */
+    let pendingLoad: { isRefresh: boolean; manual?: boolean } | null = null;
+
+    const queuePendingLoad = (opts: {
+      isRefresh: boolean;
+      manual?: boolean;
+    }) => {
+      const prev = pendingLoad;
+      if (prev && !prev.isRefresh) {
+        // Keep a queued full reload; it is stronger than a refresh.
+        return;
+      }
+      if (!opts.isRefresh) {
+        pendingLoad = { isRefresh: false, manual: true };
+        return;
+      }
+      pendingLoad = {
+        isRefresh: true,
+        manual: Boolean(opts.manual || prev?.manual),
+      };
+    };
+
+    const schedulePoll = (delayMs: number) => {
+      clearPollTimer();
+      if (cancelled || isDocumentHidden()) return;
+      const now = Date.now();
+      const { needed } = detailNeedsPoll(requestRef.current, now);
+      if (!needed && backoffMsRef.current === null) return;
+      pollTimerRef.current = setTimeout(() => {
+        void runPoll();
+      }, Math.max(0, delayMs));
+    };
+    schedulePollRef.current = schedulePoll;
+
+    const runPoll = async () => {
+      if (cancelled || isDocumentHidden()) return;
+      if (inFlightRef.current) {
+        queuePendingLoad({ isRefresh: true });
+        return;
+      }
+      const now = Date.now();
+      const { needed } = detailNeedsPoll(requestRef.current, now);
+      if (!needed && backoffMsRef.current === null) return;
+      await load({ isRefresh: true });
+    };
+
+    const load = async ({
+      isRefresh,
+      manual = false,
+    }: {
+      isRefresh: boolean;
+      manual?: boolean;
+    }) => {
+      if (cancelled) return;
+      if (inFlightRef.current) {
+        queuePendingLoad({ isRefresh, manual });
+        return;
+      }
+      inFlightRef.current = true;
       const generation = loadGenerationRef.current;
       if (!isRefresh) {
         setLoading(true);
         setError("");
+        setCheckingStatus(false);
+      } else if (manual || backoffMsRef.current !== null) {
+        setCheckingStatus(true);
       }
       try {
         const data = (await apiCall(
           `/payment-requests/${encodeURIComponent(publicId)}`
         )) as PaymentRequest;
-        // Ignore after unmount or generation invalidation (terminal race).
         if (cancelled || generation !== loadGenerationRef.current) return;
-        // Accept unknown initial state; ignore only after a known terminal status.
-        const known = knownStatusRef.current;
-        if (known !== "pending" && known !== "unknown") return;
+
         const previous = requestRef.current;
-        const changed = !previous || !isMateriallySameRequest(previous, data);
-        requestRef.current = data;
-        setRequest(data);
-        if (changed) {
-          onUpdatedRef.current(data);
+        const beforeStatus = previous
+          ? normalizePaymentRequestStatus(previous.status)
+          : "unknown";
+        const merged = applyRequest(data, { notify: true });
+        const afterStatus = normalizePaymentRequestStatus(merged.status);
+        if (beforeStatus !== afterStatus) {
+          // Invalidate any other in-flight GETs started under the prior status.
+          loadGenerationRef.current += 1;
         }
-        const status = normalizePaymentRequestStatus(data.status);
-        knownStatusRef.current = status;
-        if (status === "pending") {
-          schedulePoll();
+
+        backoffMsRef.current = null;
+        setError("");
+        setCheckingStatus(false);
+
+        const after = Date.now();
+        const next = detailNeedsPoll(merged, after);
+        if (!next.needed) {
+          pollStartedAtRef.current = null;
+          clearPollTimer();
+          scheduleExpiryTick();
+          return;
+        }
+        if (pollStartedAtRef.current === null) {
+          pollStartedAtRef.current = after;
+        }
+        if (next.useTerminalInterval) {
+          schedulePoll(PAYMENT_REQUEST_TERMINAL_RECONCILE_INTERVAL_MS);
         } else {
-          clearPoll();
+          const elapsed = after - (pollStartedAtRef.current ?? after);
+          schedulePoll(getActivePaymentRequestPollIntervalMs(elapsed));
         }
+        scheduleExpiryTick();
       } catch (err: unknown) {
         if (cancelled || generation !== loadGenerationRef.current) return;
         if (isRefresh) {
-          // Errors may reschedule only while still OPEN/pending.
-          if (knownStatusRef.current === "pending") {
-            schedulePoll();
+          if (isTransientPaymentRequestError(err)) {
+            backoffMsRef.current = getNextPaymentRequestBackoffMs(
+              backoffMsRef.current
+            );
+            setCheckingStatus(true);
+            schedulePoll(backoffMsRef.current);
+            return;
           }
+          // Non-transient refresh errors: keep last-known, stop autonomous poll.
+          setCheckingStatus(false);
+          clearPollTimer();
           return;
         }
         const message =
           err instanceof Error ? err.message : t("Failed to load request.");
         setError(message);
+        setCheckingStatus(false);
       } finally {
-        if (!cancelled && !isRefresh) setLoading(false);
-        inFlight = false;
+        if (cancelled) {
+          // Newer effect owns inFlightRef; do not clear or drain here.
+          return;
+        }
+        if (!isRefresh) setLoading(false);
+        inFlightRef.current = false;
+        // Drain follow-up after success, error, or stale-generation ignore so
+        // cancel/list/409 bumps cannot starve CANCEL_PENDING reconciliation.
+        if (pendingLoad !== null) {
+          const next = pendingLoad;
+          pendingLoad = null;
+          clearPollTimer();
+          void load(next);
+        }
       }
+    };
+    loadRef.current = load;
+
+    const onVisibilityOrFocus = () => {
+      if (cancelled) return;
+      if (isDocumentHidden()) {
+        clearPollTimer();
+        return;
+      }
+      schedulePoll(0);
     };
 
     void load({ isRefresh: false });
+    scheduleExpiryTick();
+
+    document.addEventListener("visibilitychange", onVisibilityOrFocus);
+    window.addEventListener("focus", onVisibilityOrFocus);
+
     return () => {
       cancelled = true;
-      clearPoll();
-      clearPollRef.current = null;
-      invalidateInFlightLoadsRef.current = null;
+      loadGenerationRef.current += 1;
+      clearPollTimer();
+      clearExpiryTimer();
+      schedulePollRef.current = null;
+      loadRef.current = null;
+      document.removeEventListener("visibilitychange", onVisibilityOrFocus);
+      window.removeEventListener("focus", onVisibilityOrFocus);
     };
+    // applyRequest closes over refs; including it would reset poll timers every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
   }, [publicId, t]);
 
   const copyText = async (text: string, field: "link" | "invoice") => {
@@ -264,6 +495,11 @@ export const RequestDetailModal = ({
     }
   };
 
+  const handleRetry = () => {
+    setError("");
+    void loadRef.current?.({ isRefresh: false, manual: true });
+  };
+
   const handleCancel = async () => {
     if (!request || cancelling) return;
     setCancelling(true);
@@ -273,15 +509,41 @@ export const RequestDetailModal = ({
         `/payment-requests/${encodeURIComponent(request.public_id)}/cancel`,
         { method: "POST" }
       )) as PaymentRequest;
-      knownStatusRef.current = normalizePaymentRequestStatus(updated.status);
-      invalidateInFlightLoadsRef.current?.();
-      clearPollRef.current?.();
-      requestRef.current = updated;
-      setRequest(updated);
+      loadGenerationRef.current += 1;
+      const merged = applyRequest(updated, { notify: true });
+      const status = normalizePaymentRequestStatus(merged.status);
       setCancelConfirm(false);
-      setFeedback(t("Request cancelled"));
-      onUpdated(updated);
+      if (status === "cancelled") {
+        setFeedback(t("Request cancelled"));
+      } else if (status === "cancel_pending") {
+        setFeedback(t("Cancelling"));
+      }
+      backoffMsRef.current = null;
+      schedulePollRef.current?.(0);
     } catch (err: unknown) {
+      const status = getErrorStatus(err);
+      if (status === 409) {
+        setCancelConfirm(false);
+        setCancelError("");
+        setCheckingStatus(true);
+        void loadRef.current?.({ isRefresh: true, manual: true });
+        return;
+      }
+      if (isTransientPaymentRequestError(err)) {
+        // Local UI uncertainty only — do not write CANCEL_PENDING into status.
+        const baseline = requestRef.current;
+        if (baseline) {
+          loadGenerationRef.current += 1;
+          cancelUncertainRef.current = true;
+          setCancelUncertain(true);
+          setCancelConfirm(false);
+          setFeedback(t("Cancelling"));
+          setCheckingStatus(true);
+          backoffMsRef.current = null;
+          schedulePollRef.current?.(0);
+        }
+        return;
+      }
       const message =
         err instanceof Error ? err.message : t("Failed to cancel request.");
       setCancelError(message);
@@ -290,8 +552,8 @@ export const RequestDetailModal = ({
     }
   };
 
-  const status = request
-    ? normalizePaymentRequestStatus(request.status)
+  const effectiveStatus = request
+    ? getEffectivePaymentRequestStatus(request)
     : "unknown";
   const shareUrl = request
     ? getPaymentRequestShareUrl(request.public_id, request.share_url)
@@ -301,6 +563,16 @@ export const RequestDetailModal = ({
       ? `${formatSats(request.amount_sats, locale)} sats`
       : "•••••••"
     : "";
+  const payable =
+    Boolean(request && isPayablePaymentRequest(request) && !cancelUncertain);
+  const cancellable =
+    Boolean(
+      request && isCancellablePaymentRequest(request) && !cancelUncertain
+    );
+  const locallyExpiredOpen =
+    request &&
+    normalizePaymentRequestStatus(request.status) === "open" &&
+    effectiveStatus === "expired";
 
   return (
     <Modal
@@ -318,7 +590,18 @@ export const RequestDetailModal = ({
         </div>
       )}
 
-      {!loading && error && <Alert variant="danger">{error}</Alert>}
+      {!loading && error && !request && (
+        <div className="space-y-3">
+          <Alert variant="danger">{error}</Alert>
+          <button
+            type="button"
+            onClick={handleRetry}
+            className="w-full min-h-11 bg-panel-elevated border border-panel-edge text-foreground font-semibold py-3 px-4 rounded-lg hover:bg-input transition touch-manipulation"
+          >
+            {t("Retry")}
+          </button>
+        </div>
+      )}
 
       {!loading && request && (
         <div className="space-y-4">
@@ -327,13 +610,29 @@ export const RequestDetailModal = ({
               {amountLabel}
             </p>
             <span
-              className={`inline-flex items-center min-h-8 px-3 text-sm font-medium rounded-md border ${statusBadgeClass[status]}`}
+              className={`inline-flex items-center min-h-8 px-3 text-sm font-medium rounded-md border ${statusBadgeClass[effectiveStatus]}`}
             >
-              {status === "unknown"
+              {effectiveStatus === "unknown"
                 ? request.status
-                : t(statusLabelKey[status])}
+                : t(paymentRequestStatusLabelKey[effectiveStatus])}
             </span>
           </div>
+
+          {checkingStatus && (
+            <p
+              className="text-sm text-muted"
+              role="status"
+              aria-live="polite"
+            >
+              {t("Checking status")}
+            </p>
+          )}
+
+          {locallyExpiredOpen && (
+            <Alert variant="warning">
+              {t("This payment request has expired. Confirming status...")}
+            </Alert>
+          )}
 
           {request.memo && (
             <p className="text-muted text-sm break-words">{request.memo}</p>
@@ -372,7 +671,7 @@ export const RequestDetailModal = ({
             )}
           </dl>
 
-          {status === "pending" && request.payment_request && (
+          {payable && request.payment_request && (
             <div className="text-center">
               <div className="bg-white p-4 rounded-lg inline-block">
                 <LocalQrCode
@@ -400,7 +699,7 @@ export const RequestDetailModal = ({
               </IconButton>
             </div>
 
-            {request.payment_request && (
+            {payable && request.payment_request && (
               <div className="bg-input border border-panel-edge rounded-lg px-3 py-2 flex items-center justify-between gap-2">
                 <span className="font-address text-xs break-all text-left flex-1">
                   {request.payment_request}
@@ -436,7 +735,7 @@ export const RequestDetailModal = ({
             </button>
           )}
 
-          {isCancellablePaymentRequest(request) && !cancelConfirm && (
+          {cancellable && !cancelConfirm && (
             <button
               type="button"
               onClick={() => setCancelConfirm(true)}
@@ -446,7 +745,7 @@ export const RequestDetailModal = ({
             </button>
           )}
 
-          {cancelConfirm && (
+          {cancelConfirm && cancellable && (
             <div
               className="space-y-3 p-4 rounded-lg border border-danger/30 bg-danger-bg"
               role="group"

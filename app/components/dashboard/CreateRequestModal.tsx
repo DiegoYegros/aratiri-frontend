@@ -6,6 +6,7 @@ import { apiCall, PaymentRequest } from "../../lib/api";
 import {
   createIdempotencyKey,
   EXPIRY_OPTIONS,
+  getErrorStatus,
   isValidAmountSats,
   MAX_EXPIRES_IN_SECONDS,
   MAX_MEMO_LENGTH,
@@ -98,9 +99,18 @@ export const CreateRequestModal = ({
       lastPayloadFingerprintRef.current = null;
       onCreated(created);
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : t("Failed to create request.");
-      setError(message);
+      // Same Idempotency-Key + different payload: conflict, not a blind retry.
+      if (getErrorStatus(err) === 409) {
+        setError(
+          t(
+            "This create request conflicts with a previous attempt. Change the form or try again."
+          )
+        );
+      } else {
+        const message =
+          err instanceof Error ? err.message : t("Failed to create request.");
+        setError(message);
+      }
     } finally {
       submittingRef.current = false;
       setLoading(false);

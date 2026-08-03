@@ -1,15 +1,33 @@
 "use client";
 
 import { Check, ClipboardCopy, Share2, Zap } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   fetchPublicPaymentRequest,
   PaymentRequest,
 } from "@/app/lib/api";
 import {
+  clearPaymentRequestInvoiceIfNotOpen,
+  getActivePaymentRequestPollIntervalMs,
+  getEffectivePaymentRequestStatus,
+  getErrorStatus,
+  getMsUntilPaymentRequestLocalExpiry,
+  getNextPaymentRequestBackoffMs,
+  PAYMENT_REQUEST_MAX_TIMER_MS,
   getPaymentRequestShareUrl,
+  isActiveReconcilableStatus,
+  isFinalPaymentRequestStatus,
+  isPayablePaymentRequest,
+  isTerminalReconcilableStatus,
+  isTransientPaymentRequestError,
+  mergePaymentRequestMonotonic,
+  needsPaymentRequestReconciliation,
   normalizePaymentRequestStatus,
-  PAYMENT_REQUEST_POLL_INTERVAL_MS,
+  PAYMENT_REQUEST_TERMINAL_RECONCILE_INTERVAL_MS,
+  PAYMENT_REQUEST_TERMINAL_RECONCILE_WINDOW_MS,
+  PUBLIC_PAYMENT_REQUEST_404_RETRY_DELAY_MS,
+  PUBLIC_PAYMENT_REQUEST_404_RETRY_LIMIT,
+  paymentRequestStatusLabelKey,
   PaymentRequestStatus,
 } from "@/app/lib/paymentRequests";
 import { formatSats } from "@/app/lib/format";
@@ -27,13 +45,18 @@ type PageState =
   | { kind: "loading" }
   | { kind: "not_found" }
   | { kind: "error"; message: string }
+  | { kind: "unavailable" }
   | { kind: "ready"; request: PaymentRequest };
 
-const statusLabelKey: Record<PaymentRequestStatus, string> = {
-  pending: "Pending",
-  paid: "Paid",
-  expired: "Expired",
-  cancelled: "Cancelled",
+const statusBadgeClass: Record<PaymentRequestStatus | "unknown", string> = {
+  provisioning: "bg-accent-subtle text-pending border-accent/30",
+  open: "bg-accent-subtle text-pending border-accent/30",
+  cancel_pending: "bg-accent-subtle text-pending border-accent/30",
+  paid: "bg-success-bg text-success border-success/30",
+  expired: "bg-panel-elevated text-muted border-panel-edge",
+  cancelled: "bg-danger-bg text-danger border-danger/30",
+  failed: "bg-danger-bg text-danger border-danger/30",
+  unknown: "bg-panel-elevated text-muted border-panel-edge",
 };
 
 const isAbortError = (err: unknown): boolean =>
@@ -44,33 +67,35 @@ const isAbortError = (err: unknown): boolean =>
       (err as { name?: string }).name === "AbortError"
   );
 
-const getErrorStatus = (err: unknown): number | undefined => {
-  if (err && typeof err === "object" && "status" in err) {
-    const status = Number((err as { status?: number }).status);
-    return Number.isFinite(status) ? status : undefined;
-  }
-  return undefined;
-};
-
-/** Network failures, 429, and 5xx are worth retrying on background refresh. */
-const isRetryableRefreshError = (err: unknown): boolean => {
-  const status = getErrorStatus(err);
-  if (status === undefined) return true;
-  if (status === 429) return true;
-  if (status >= 500 && status <= 599) return true;
-  return false;
-};
-
 export const PublicPayPage = ({ publicId }: PublicPayPageProps) => {
   const t = useTranslation();
   const { language } = useLanguage();
   const locale = language === "es" ? "es-ES" : "en-US";
   const [state, setState] = useState<PageState>({ kind: "loading" });
+  const [checkingStatus, setCheckingStatus] = useState(false);
   const [copiedField, setCopiedField] = useState<"link" | "invoice" | null>(
     null
   );
   const [feedback, setFeedback] = useState("");
   const [showShareButton, setShowShareButton] = useState(false);
+  /** Forces re-render when local expiry crosses without a network update. */
+  const [, setExpiryTick] = useState(0);
+
+  const requestRef = useRef<PaymentRequest | null>(null);
+  const pollStartedAtRef = useRef<number | null>(null);
+  const terminalSeenAtRef = useRef<number | null>(null);
+  const backoffMsRef = useRef<number | null>(null);
+  const consecutive404Ref = useRef(0);
+  const consecutiveTransientRef = useRef(0);
+  const loadGenerationRef = useRef(0);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const expiryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inFlightRef = useRef(false);
+  const loadRef = useRef<
+    ((opts: { isRefresh: boolean; manual?: boolean }) => Promise<void>) | null
+  >(null);
+  const schedulePollRef = useRef<((delayMs: number) => void) | null>(null);
+  const restartBudgetRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (typeof navigator.share === "function") {
@@ -80,78 +105,335 @@ export const PublicPayPage = ({ publicId }: PublicPayPageProps) => {
 
   useEffect(() => {
     let cancelled = false;
-    let inFlight = false;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    loadGenerationRef.current += 1;
+    inFlightRef.current = false;
+    backoffMsRef.current = null;
+    pollStartedAtRef.current = null;
+    terminalSeenAtRef.current = null;
+    consecutive404Ref.current = 0;
+    consecutiveTransientRef.current = 0;
+    requestRef.current = null;
+    setState({ kind: "loading" });
+    setCheckingStatus(false);
 
-    const clearPoll = () => {
-      if (timeoutId !== null) {
-        clearTimeout(timeoutId);
-        timeoutId = null;
+    const clearPollTimer = () => {
+      if (pollTimerRef.current !== null) {
+        clearTimeout(pollTimerRef.current);
+        pollTimerRef.current = null;
       }
     };
 
-    const schedulePoll = () => {
-      clearPoll();
-      if (cancelled) return;
-      timeoutId = setTimeout(() => {
-        void load({ isRefresh: true });
-      }, PAYMENT_REQUEST_POLL_INTERVAL_MS);
+    const clearExpiryTimer = () => {
+      if (expiryTimerRef.current !== null) {
+        clearTimeout(expiryTimerRef.current);
+        expiryTimerRef.current = null;
+      }
     };
 
-    const load = async ({ isRefresh }: { isRefresh: boolean }) => {
-      if (cancelled || inFlight) return;
-      inFlight = true;
-      if (!isRefresh) {
-        setState({ kind: "loading" });
-      }
-      try {
-        const request = await fetchPublicPaymentRequest(publicId);
-        if (cancelled) return;
-        setState({ kind: "ready", request });
-        const status = normalizePaymentRequestStatus(request.status);
-        if (status === "pending") {
-          schedulePoll();
-        } else {
-          clearPoll();
+    const isDocumentHidden = () =>
+      typeof document !== "undefined" && document.hidden;
+
+    const trackTerminal = (current: PaymentRequest, now: number) => {
+      const effective = getEffectivePaymentRequestStatus(current, now);
+      if (isFinalPaymentRequestStatus(effective)) {
+        terminalSeenAtRef.current = null;
+        pollStartedAtRef.current = null;
+      } else if (isTerminalReconcilableStatus(effective)) {
+        if (terminalSeenAtRef.current === null) {
+          terminalSeenAtRef.current = now;
         }
-      } catch (err: unknown) {
+      } else if (isActiveReconcilableStatus(effective)) {
+        terminalSeenAtRef.current = null;
+      }
+    };
+
+    const applyRequest = (incoming: PaymentRequest): PaymentRequest => {
+      const baseline = requestRef.current;
+      const merged = baseline
+        ? mergePaymentRequestMonotonic(baseline, incoming)
+        : clearPaymentRequestInvoiceIfNotOpen(incoming);
+      requestRef.current = merged;
+      setState({ kind: "ready", request: merged });
+      trackTerminal(merged, Date.now());
+      return merged;
+    };
+
+    const pageNeedsPoll = (
+      current: PaymentRequest | null,
+      now: number
+    ): { needed: boolean; useTerminalInterval: boolean } => {
+      if (!current) return { needed: false, useTerminalInterval: false };
+      if (!needsPaymentRequestReconciliation(current, now)) {
+        return { needed: false, useTerminalInterval: false };
+      }
+      const effective = getEffectivePaymentRequestStatus(current, now);
+      if (isActiveReconcilableStatus(effective)) {
+        return { needed: true, useTerminalInterval: false };
+      }
+      if (isTerminalReconcilableStatus(effective)) {
+        const seenAt = terminalSeenAtRef.current ?? now;
+        if (terminalSeenAtRef.current === null) {
+          terminalSeenAtRef.current = seenAt;
+        }
+        if (now - seenAt <= PAYMENT_REQUEST_TERMINAL_RECONCILE_WINDOW_MS) {
+          return { needed: true, useTerminalInterval: true };
+        }
+      }
+      return { needed: false, useTerminalInterval: false };
+    };
+
+    const scheduleExpiryTick = () => {
+      clearExpiryTimer();
+      if (cancelled) return;
+      const current = requestRef.current;
+      if (!current) return;
+      const ms = getMsUntilPaymentRequestLocalExpiry(current, Date.now());
+      if (ms === null || ms <= 0) return;
+      expiryTimerRef.current = setTimeout(() => {
         if (cancelled) return;
+        setExpiryTick((n) => n + 1);
+        scheduleExpiryTick();
+        schedulePoll(0);
+      }, Math.min(ms, PAYMENT_REQUEST_MAX_TIMER_MS));
+    };
+
+    const scheduleNextAfterSuccess = (merged: PaymentRequest) => {
+      const after = Date.now();
+      const next = pageNeedsPoll(merged, after);
+      if (!next.needed) {
+        pollStartedAtRef.current = null;
+        clearPollTimer();
+        scheduleExpiryTick();
+        return;
+      }
+      if (pollStartedAtRef.current === null) {
+        pollStartedAtRef.current = after;
+      }
+      if (next.useTerminalInterval) {
+        schedulePoll(PAYMENT_REQUEST_TERMINAL_RECONCILE_INTERVAL_MS);
+      } else {
+        const elapsed = after - (pollStartedAtRef.current ?? after);
+        schedulePoll(getActivePaymentRequestPollIntervalMs(elapsed));
+      }
+      scheduleExpiryTick();
+    };
+
+    const schedulePoll = (delayMs: number) => {
+      clearPollTimer();
+      if (cancelled || isDocumentHidden()) return;
+      const now = Date.now();
+      const { needed } = pageNeedsPoll(requestRef.current, now);
+      if (
+        !needed &&
+        backoffMsRef.current === null &&
+        consecutive404Ref.current === 0
+      ) {
+        return;
+      }
+      pollTimerRef.current = setTimeout(() => {
+        void runPoll();
+      }, Math.max(0, delayMs));
+    };
+    schedulePollRef.current = schedulePoll;
+
+    /** Queued Restart/Retry while a GET is in flight. */
+    let pendingRestart = false;
+
+    const runPoll = async () => {
+      if (cancelled || isDocumentHidden() || inFlightRef.current) return;
+      await load({ isRefresh: true });
+    };
+
+    const showExhausted = (hadKnown: boolean, was404: boolean) => {
+      clearPollTimer();
+      setCheckingStatus(false);
+      requestRef.current = null;
+      if (was404 || !hadKnown) {
+        setState(
+          was404
+            ? { kind: "not_found" }
+            : {
+                kind: "error",
+                message: t("Failed to load payment."),
+              }
+        );
+      } else {
+        setState({
+          kind: "error",
+          message: t("Failed to load payment."),
+        });
+      }
+    };
+
+    const load = async ({
+      isRefresh,
+      manual = false,
+    }: {
+      isRefresh: boolean;
+      manual?: boolean;
+    }) => {
+      if (cancelled || inFlightRef.current) return;
+      inFlightRef.current = true;
+      const generation = loadGenerationRef.current;
+      const hadKnown = requestRef.current !== null;
+
+      if (!isRefresh) {
+        if (!hadKnown) {
+          setState({ kind: "loading" });
+        }
+        setCheckingStatus(false);
+      } else if (manual || backoffMsRef.current !== null) {
+        // Mirror owner detail: uncertain/retry/manual only — not every healthy poll.
+        setCheckingStatus(true);
+      }
+
+      try {
+        const incoming = await fetchPublicPaymentRequest(publicId);
+        if (cancelled || generation !== loadGenerationRef.current) return;
+
+        consecutive404Ref.current = 0;
+        consecutiveTransientRef.current = 0;
+        backoffMsRef.current = null;
+        setCheckingStatus(false);
+
+        const previous = requestRef.current;
+        const beforeStatus = previous
+          ? normalizePaymentRequestStatus(previous.status)
+          : "unknown";
+        const merged = applyRequest(incoming);
+        const afterStatus = normalizePaymentRequestStatus(merged.status);
+        if (beforeStatus !== afterStatus) {
+          loadGenerationRef.current += 1;
+        }
+
+        scheduleNextAfterSuccess(merged);
+      } catch (err: unknown) {
+        if (cancelled || generation !== loadGenerationRef.current) return;
         const status = getErrorStatus(err);
-        if (isRefresh) {
-          if (status === 404) {
-            clearPoll();
-            setState({ kind: "not_found" });
-            return;
-          }
-          if (!isRetryableRefreshError(err)) {
-            // 410 and other definitive non-retryable 4xx: stop and show terminal error.
-            clearPoll();
-            setState({
-              kind: "error",
-              message: t("This payment request is unavailable."),
-            });
-            return;
-          }
-          // Transient network/5xx/429: keep last visible state and retry.
-          schedulePoll();
+
+        if (status === 410) {
+          clearPollTimer();
+          setCheckingStatus(false);
+          requestRef.current = null;
+          setState({ kind: "unavailable" });
           return;
         }
+
         if (status === 404) {
-          setState({ kind: "not_found" });
-        } else {
-          const message =
-            err instanceof Error ? err.message : t("Failed to load payment.");
-          setState({ kind: "error", message });
+          consecutive404Ref.current += 1;
+          consecutiveTransientRef.current = 0;
+          if (consecutive404Ref.current >= PUBLIC_PAYMENT_REQUEST_404_RETRY_LIMIT) {
+            showExhausted(hadKnown, true);
+            return;
+          }
+          if (hadKnown) {
+            setCheckingStatus(true);
+          } else {
+            setState({ kind: "loading" });
+          }
+          schedulePoll(PUBLIC_PAYMENT_REQUEST_404_RETRY_DELAY_MS);
+          return;
         }
+
+        if (isTransientPaymentRequestError(err)) {
+          consecutiveTransientRef.current += 1;
+          if (
+            !hadKnown &&
+            consecutiveTransientRef.current >= PUBLIC_PAYMENT_REQUEST_404_RETRY_LIMIT
+          ) {
+            showExhausted(false, false);
+            return;
+          }
+          if (
+            hadKnown &&
+            consecutiveTransientRef.current >= PUBLIC_PAYMENT_REQUEST_404_RETRY_LIMIT
+          ) {
+            showExhausted(true, false);
+            return;
+          }
+          backoffMsRef.current = getNextPaymentRequestBackoffMs(
+            backoffMsRef.current
+          );
+          if (hadKnown) {
+            setCheckingStatus(true);
+          } else {
+            setState({ kind: "loading" });
+          }
+          schedulePoll(backoffMsRef.current);
+          return;
+        }
+
+        // Definitive non-retryable error.
+        clearPollTimer();
+        setCheckingStatus(false);
+        requestRef.current = null;
+        setState({
+          kind: "error",
+          message:
+            err instanceof Error
+              ? err.message
+              : t("This payment request is unavailable."),
+        });
       } finally {
-        inFlight = false;
+        if (cancelled) {
+          // Newer effect owns inFlightRef; do not clear or drain here.
+          return;
+        }
+        inFlightRef.current = false;
+        void manual;
+        if (pendingRestart) {
+          pendingRestart = false;
+          consecutive404Ref.current = 0;
+          consecutiveTransientRef.current = 0;
+          backoffMsRef.current = null;
+          setCheckingStatus(false);
+          clearPollTimer();
+          void load({ isRefresh: false, manual: true });
+        }
       }
+    };
+    loadRef.current = load;
+
+    const restartBudget = () => {
+      consecutive404Ref.current = 0;
+      consecutiveTransientRef.current = 0;
+      backoffMsRef.current = null;
+      setCheckingStatus(false);
+      // Invalidate any in-flight GET so Retry always starts a fresh budgeted load.
+      loadGenerationRef.current += 1;
+      if (inFlightRef.current) {
+        pendingRestart = true;
+        return;
+      }
+      clearPollTimer();
+      void load({ isRefresh: false, manual: true });
+    };
+    restartBudgetRef.current = restartBudget;
+
+    const onVisibilityOrFocus = () => {
+      if (cancelled) return;
+      if (isDocumentHidden()) {
+        clearPollTimer();
+        return;
+      }
+      schedulePoll(0);
     };
 
     void load({ isRefresh: false });
+
+    document.addEventListener("visibilitychange", onVisibilityOrFocus);
+    window.addEventListener("focus", onVisibilityOrFocus);
+
     return () => {
       cancelled = true;
-      clearPoll();
+      loadGenerationRef.current += 1;
+      clearPollTimer();
+      clearExpiryTimer();
+      schedulePollRef.current = null;
+      loadRef.current = null;
+      restartBudgetRef.current = null;
+      document.removeEventListener("visibilitychange", onVisibilityOrFocus);
+      window.removeEventListener("focus", onVisibilityOrFocus);
     };
   }, [publicId, t]);
 
@@ -180,8 +462,11 @@ export const PublicPayPage = ({ publicId }: PublicPayPageProps) => {
       });
     } catch (err: unknown) {
       if (isAbortError(err)) return;
-      // Ignore share failures; copy-link remains available.
     }
+  };
+
+  const handleRetry = () => {
+    restartBudgetRef.current?.();
   };
 
   const shell = (children: ReactNode) => (
@@ -198,6 +483,16 @@ export const PublicPayPage = ({ publicId }: PublicPayPageProps) => {
         {children}
       </div>
     </div>
+  );
+
+  const retryButton = (
+    <button
+      type="button"
+      onClick={handleRetry}
+      className="w-full min-h-11 bg-panel-elevated border border-panel-edge text-foreground font-semibold py-3 px-4 rounded-lg hover:bg-input transition touch-manipulation"
+    >
+      {t("Retry")}
+    </button>
   );
 
   if (state.kind === "loading") {
@@ -219,44 +514,74 @@ export const PublicPayPage = ({ publicId }: PublicPayPageProps) => {
 
   if (state.kind === "not_found") {
     return shell(
-      <Alert variant="danger">{t("Payment request not found.")}</Alert>
+      <div className="space-y-3">
+        <Alert variant="danger">{t("Payment request not found.")}</Alert>
+        {retryButton}
+      </div>
+    );
+  }
+
+  if (state.kind === "unavailable") {
+    return shell(
+      <Alert variant="danger">
+        {t("This payment request is unavailable.")}
+      </Alert>
     );
   }
 
   if (state.kind === "error") {
-    return shell(<Alert variant="danger">{state.message}</Alert>);
+    return shell(
+      <div className="space-y-3">
+        <Alert variant="danger">{state.message}</Alert>
+        {retryButton}
+      </div>
+    );
   }
 
   const { request } = state;
-  const status = normalizePaymentRequestStatus(request.status);
+  const effective = getEffectivePaymentRequestStatus(request);
   const shareUrl = getPaymentRequestShareUrl(
     request.public_id,
     request.share_url
   );
   const amountLabel = `${formatSats(request.amount_sats, locale)} sats`;
+  const payable = isPayablePaymentRequest(request);
+  const checkingBanner = checkingStatus ? (
+    <p className="text-sm text-muted text-center" role="status" aria-live="polite">
+      {t("Checking status")}
+    </p>
+  ) : null;
 
-  if (status === "paid") {
+  if (effective === "paid") {
     return shell(
       <div className="space-y-4 text-center" role="status">
         <Alert variant="success">{t("This request has been paid.")}</Alert>
         <p className="text-3xl font-semibold font-amount">{amountLabel}</p>
         {request.memo && <p className="text-muted text-sm">{request.memo}</p>}
+        {checkingBanner}
       </div>
     );
   }
 
-  if (status === "expired") {
+  if (effective === "expired") {
+    const confirming =
+      normalizePaymentRequestStatus(request.status) === "open";
     return shell(
       <div className="space-y-4 text-center" role="status">
-        <Alert variant="warning">{t("This payment request has expired.")}</Alert>
+        <Alert variant="warning">
+          {confirming
+            ? t("This payment request has expired. Confirming status...")
+            : t("This payment request has expired.")}
+        </Alert>
         <p className="text-3xl font-semibold font-amount text-muted">
           {amountLabel}
         </p>
+        {checkingBanner}
       </div>
     );
   }
 
-  if (status === "cancelled") {
+  if (effective === "cancelled") {
     return shell(
       <div className="space-y-4 text-center" role="status">
         <Alert variant="danger">
@@ -265,23 +590,79 @@ export const PublicPayPage = ({ publicId }: PublicPayPageProps) => {
         <p className="text-3xl font-semibold font-amount text-muted">
           {amountLabel}
         </p>
+        {checkingBanner}
       </div>
     );
   }
 
-  if (status !== "pending") {
+  if (effective === "failed") {
+    return shell(
+      <div className="space-y-4 text-center" role="status">
+        <Alert variant="danger">{t("This payment request failed.")}</Alert>
+        <p className="text-3xl font-semibold font-amount text-muted">
+          {amountLabel}
+        </p>
+        {checkingBanner}
+      </div>
+    );
+  }
+
+  if (effective === "provisioning") {
+    return shell(
+      <div className="space-y-4 text-center" role="status">
+        <Alert variant="warning">
+          {t("This payment request is being prepared.")}
+        </Alert>
+        <p className="text-3xl font-semibold font-amount">{amountLabel}</p>
+        {request.memo && (
+          <p className="text-muted text-sm break-words">{request.memo}</p>
+        )}
+        <span
+          className={`inline-flex items-center min-h-8 px-3 text-sm font-medium rounded-md border ${statusBadgeClass.provisioning}`}
+        >
+          {t(paymentRequestStatusLabelKey.provisioning)}
+        </span>
+        {checkingBanner}
+      </div>
+    );
+  }
+
+  if (effective === "cancel_pending") {
+    return shell(
+      <div className="space-y-4 text-center" role="status">
+        <Alert variant="warning">
+          {t("This payment request is being cancelled.")}
+        </Alert>
+        <p className="text-3xl font-semibold font-amount text-muted">
+          {amountLabel}
+        </p>
+        <span
+          className={`inline-flex items-center min-h-8 px-3 text-sm font-medium rounded-md border ${statusBadgeClass.cancel_pending}`}
+        >
+          {t(paymentRequestStatusLabelKey.cancel_pending)}
+        </span>
+        {checkingBanner}
+      </div>
+    );
+  }
+
+  if (effective !== "open") {
     return shell(
       <div className="space-y-4 text-center">
         <Alert variant="warning">
           {t("This payment request is unavailable.")}
         </Alert>
         <p className="text-muted text-sm">
-          {status === "unknown" ? request.status : t(statusLabelKey[status])}
+          {effective === "unknown"
+            ? request.status
+            : t(paymentRequestStatusLabelKey[effective])}
         </p>
+        {checkingBanner}
       </div>
     );
   }
 
+  // Exact OPEN + unexpired. Pay actions only when bolt11 present and payable.
   return shell(
     <div className="space-y-5">
       <div className="text-center space-y-2">
@@ -299,12 +680,16 @@ export const PublicPayPage = ({ publicId }: PublicPayPageProps) => {
             </span>
           </p>
         )}
-        <span className="inline-flex items-center min-h-8 px-3 text-sm font-medium rounded-md border bg-accent-subtle text-pending border-accent/30">
-          {t("Pending")}
+        <span
+          className={`inline-flex items-center min-h-8 px-3 text-sm font-medium rounded-md border ${statusBadgeClass.open}`}
+        >
+          {t(paymentRequestStatusLabelKey.open)}
         </span>
       </div>
 
-      {request.payment_request && (
+      {checkingBanner}
+
+      {payable && request.payment_request && (
         <>
           <div className="text-center">
             <div className="bg-white p-4 rounded-lg inline-block">

@@ -219,7 +219,11 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
       const errorData = await response
         .json()
         .catch(() => ({ message: "An unknown error occurred." }));
-      throw new Error(errorData.message || `HTTP Error: ${response.status}`);
+      const error = new Error(
+        errorData.message || `HTTP Error: ${response.status}`
+      ) as Error & { status?: number };
+      error.status = response.status;
+      throw error;
     }
 
     const contentType = response.headers.get("content-type");
