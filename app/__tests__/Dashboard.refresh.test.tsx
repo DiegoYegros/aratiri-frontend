@@ -5,10 +5,12 @@ import { Dashboard } from "@/app/components/dashboard/Dashboard";
 import { LanguageProvider } from "@/app/LanguageProvider";
 
 const apiCall = vi.fn();
+const publicApiGet = vi.fn();
 
 vi.mock("@/app/lib/api", () => ({
   API_BASE_URL: "https://example.test/v1",
   apiCall: (...args: unknown[]) => apiCall(...args),
+  publicApiGet: (...args: unknown[]) => publicApiGet(...args),
 }));
 
 vi.mock("@/app/hooks/useCurrency", () => ({
@@ -56,6 +58,9 @@ describe("Dashboard refresh composition", () => {
       if (endpoint.startsWith("/accounts/account/transactions")) {
         return { transactions: [] };
       }
+      return {};
+    });
+    publicApiGet.mockImplementation(async (endpoint: string) => {
       if (endpoint.startsWith("/general-data/btc-price/current")) {
         return {
           currency: "usd",
@@ -82,7 +87,7 @@ describe("Dashboard refresh composition", () => {
     const accountCallsBefore = apiCall.mock.calls.filter(
       (c) => c[0] === "/accounts/account"
     ).length;
-    const priceCallsBefore = apiCall.mock.calls.filter((c) =>
+    const priceCallsBefore = publicApiGet.mock.calls.filter((c) =>
       String(c[0]).includes("/general-data/btc-price/current")
     ).length;
 
@@ -98,7 +103,7 @@ describe("Dashboard refresh composition", () => {
         apiCall.mock.calls.filter((c) => c[0] === "/accounts/account").length
       ).toBeGreaterThan(accountCallsBefore);
       expect(
-        apiCall.mock.calls.filter((c) =>
+        publicApiGet.mock.calls.filter((c) =>
           String(c[0]).includes("/general-data/btc-price/current")
         ).length
       ).toBeGreaterThan(priceCallsBefore);

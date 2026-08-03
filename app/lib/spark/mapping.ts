@@ -131,10 +131,19 @@ export const isLightningSendTerminal = (status: string): boolean => {
 export const isCoopExitTerminal = (status: string): boolean =>
   status === "SUCCEEDED" || status === "EXPIRED" || status === "FAILED";
 
+/** Clear copy when create/restore conflicts with meta already on this device. */
+export const SPARK_IDENTITY_TAKEN_MESSAGE =
+  "This recovery phrase is already linked on this device.";
+
+/** Clear copy when create/restore is attempted while meta is already linked. */
+export const SPARK_ALREADY_LINKED_MESSAGE =
+  "A Spark wallet is already set up on this device.";
+
 /**
  * The SDK hard-fails when the device clock is >2 min off (signature
  * timestamp / invoice expiry validation). Surface that clearly instead of
- * the raw error.
+ * the raw error. Also maps device-scoped Spark conflicts by message text only —
+ * never remap bare/generic HTTP 409s (shared with SendModal payment errors).
  */
 export const describeSparkError = (
   err: unknown,
@@ -144,6 +153,16 @@ export const describeSparkError = (
   const message = err instanceof Error ? err.message : String(err ?? "");
   if (/expiry_time|clock skew|device clock|invalid.*expiry/i.test(message)) {
     return clockMessage;
+  }
+  if (
+    /identity[-\s]?taken|identity public key is already|already linked (to another|on this device)/i.test(
+      message
+    )
+  ) {
+    return SPARK_IDENTITY_TAKEN_MESSAGE;
+  }
+  if (/already[-\s]?registered|already set up on this device/i.test(message)) {
+    return SPARK_ALREADY_LINKED_MESSAGE;
   }
   return message || fallback;
 };

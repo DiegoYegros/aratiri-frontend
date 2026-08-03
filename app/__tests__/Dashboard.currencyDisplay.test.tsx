@@ -7,6 +7,7 @@ import { LanguageProvider } from "@/app/LanguageProvider";
 import { formatBtc, formatFiatAmount, formatSats } from "@/app/lib/format";
 
 const apiCall = vi.fn();
+const publicApiGet = vi.fn();
 
 const BALANCE_SATS = 123_456_789;
 const USD_EQUIV = 1_234.57;
@@ -35,6 +36,7 @@ const currencyStore = {
 vi.mock("@/app/lib/api", () => ({
   API_BASE_URL: "https://example.test/v1",
   apiCall: (...args: unknown[]) => apiCall(...args),
+  publicApiGet: (...args: unknown[]) => publicApiGet(...args),
 }));
 
 vi.mock("@/app/hooks/useCurrency", () => ({
@@ -135,6 +137,9 @@ describe("Dashboard currency display polish", () => {
           ],
         };
       }
+      return {};
+    });
+    publicApiGet.mockImplementation(async (endpoint: string) => {
       if (endpoint.startsWith("/general-data/btc-price/current")) {
         return {
           currency: currencyStore.selectedCurrency,

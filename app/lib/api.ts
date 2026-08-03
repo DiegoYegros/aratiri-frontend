@@ -99,78 +99,6 @@ export interface PaymentRequestListResponse {
   has_more: boolean;
 }
 
-/** Spark wallet metadata as served by the backend (snake_case from API). */
-export interface SparkWallet {
-  spark_address: string;
-  identity_public_key: string;
-  network: string;
-  account_index: number;
-  backup_verified: boolean;
-  privacy_enabled: boolean;
-}
-
-/** Registration payload carries only public metadata — never the mnemonic. */
-export interface RegisterSparkWalletRequest {
-  identity_public_key: string;
-  spark_address: string;
-  network: string;
-  account_index: number;
-}
-
-export interface UpdateSparkPrivacyRequest {
-  privacy_enabled: boolean;
-}
-
-export interface BackupVerifiedRequest {
-  backup_verified: boolean;
-}
-
-/**
- * Normalize GET /spark/wallet bodies. The API may return HTTP 200 with an empty
- * body (apiCall → {}); treat missing identity/address as no wallet.
- */
-export function parseSparkWallet(value: unknown): SparkWallet | null {
-  if (!value || typeof value !== "object") return null;
-  const record = value as Record<string, unknown>;
-  const identity =
-    typeof record.identity_public_key === "string"
-      ? record.identity_public_key.trim()
-      : "";
-  const address =
-    typeof record.spark_address === "string"
-      ? record.spark_address.trim()
-      : "";
-  if (!identity || !address) return null;
-  return value as SparkWallet;
-}
-
-export const getSparkWallet = async (): Promise<SparkWallet | null> =>
-  parseSparkWallet(await apiCall("/spark/wallet"));
-
-export const registerSparkWallet = (
-  body: RegisterSparkWalletRequest
-): Promise<SparkWallet> =>
-  apiCall("/spark/wallets", { method: "POST", body: JSON.stringify(body) });
-
-export const setSparkBackupVerified = (
-  backupVerified: boolean
-): Promise<SparkWallet> =>
-  apiCall("/spark/backup-verified", {
-    method: "POST",
-    body: JSON.stringify({ backup_verified: backupVerified } satisfies BackupVerifiedRequest),
-  });
-
-export const setSparkPrivacy = (
-  privacyEnabled: boolean
-): Promise<SparkWallet> =>
-  apiCall("/spark/privacy", {
-    method: "POST",
-    body: JSON.stringify({ privacy_enabled: privacyEnabled } satisfies UpdateSparkPrivacyRequest),
-  });
-
-export const forgetSparkWallet = (): Promise<unknown> =>
-  apiCall("/spark/wallet", { method: "DELETE" });
-
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://aratiri.diegoyegros.com/v1";
 
@@ -201,6 +129,29 @@ export const fetchPublicPaymentRequest = async (
   }
 
   return response.json();
+};
+
+/**
+ * Unauthenticated GET against the API base. Never attaches Authorization and
+ * never force-logouts — safe for guest Spark sessions (btc price, currencies).
+ */
+export const publicApiGet = async <T = unknown>(endpoint: string): Promise<T> => {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`);
+  if (!response.ok) {
+    const errorData = await response
+      .json()
+      .catch(() => ({ message: "An unknown error occurred." }));
+    const error = new Error(
+      errorData.message || `HTTP Error: ${response.status}`
+    ) as Error & { status?: number };
+    error.status = response.status;
+    throw error;
+  }
+  const contentType = response.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    return response.json();
+  }
+  return {} as T;
 };
 
 let isRefreshing = false;

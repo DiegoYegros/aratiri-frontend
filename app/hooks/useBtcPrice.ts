@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { apiCall, CurrentBtcPrice } from "../lib/api";
+import { publicApiGet, CurrentBtcPrice } from "../lib/api";
 
 const POLL_MS = 60_000;
 
@@ -20,7 +20,7 @@ export const useBtcPrice = (selectedCurrency: string) => {
     setError(false);
 
     try {
-      const data: CurrentBtcPrice = await apiCall(
+      const data = await publicApiGet<CurrentBtcPrice>(
         `/general-data/btc-price/current?currency=${encodeURIComponent(currency)}`
       );
       if (id !== requestId.current) return;

@@ -5,10 +5,12 @@ import { Dashboard } from "@/app/components/dashboard/Dashboard";
 import { LanguageProvider, useLanguage } from "@/app/LanguageProvider";
 
 const apiCall = vi.fn();
+const publicApiGet = vi.fn();
 
 vi.mock("@/app/lib/api", () => ({
   API_BASE_URL: "https://example.test/v1",
   apiCall: (...args: unknown[]) => apiCall(...args),
+  publicApiGet: (...args: unknown[]) => publicApiGet(...args),
 }));
 
 const currencyStore = {
@@ -114,6 +116,9 @@ describe("Dashboard payment WebSocket lifetime", () => {
       if (endpoint.startsWith("/accounts/account/transactions")) {
         return { transactions: [] };
       }
+      return {};
+    });
+    publicApiGet.mockImplementation(async (endpoint: string) => {
       if (endpoint.startsWith("/general-data/btc-price/current")) {
         return {
           currency: currencyStore.selectedCurrency,

@@ -11,9 +11,15 @@ declare global {
 interface GoogleLoginProps {
   onSuccess: (token: string) => void;
   onError: (error: string) => void;
+  /** Medium GSI button for callers that need a shorter control. Login omits this. */
+  compact?: boolean;
 }
 
-const GoogleLogin = ({ onSuccess, onError }: GoogleLoginProps) => {
+const GoogleLogin = ({
+  onSuccess,
+  onError,
+  compact = false,
+}: GoogleLoginProps) => {
   const buttonDiv = useRef<HTMLDivElement>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const t = useTranslation();
@@ -66,16 +72,28 @@ const GoogleLogin = ({ onSuccess, onError }: GoogleLoginProps) => {
       });
 
       buttonDiv.current.replaceChildren();
+      const width = Math.max(
+        240,
+        Math.floor(buttonDiv.current.getBoundingClientRect().width)
+      );
       window.google.accounts.id.renderButton(buttonDiv.current, {
-        theme: "outline",
-        size: "large",
+        theme: "filled_black",
+        size: compact ? "medium" : "large",
         type: "standard",
         text: "signin_with",
+        width,
       });
     }
-  }, [scriptLoaded]);
+  }, [scriptLoaded, compact]);
 
-  return <div ref={buttonDiv} className="flex justify-center"></div>;
+  return (
+    <div
+      ref={buttonDiv}
+      className={`w-full flex justify-stretch [&>div]:w-full [&>div]:flex [&>div]:justify-center ${
+        compact ? "min-h-10" : "min-h-11"
+      }`}
+    />
+  );
 };
 
 export default GoogleLogin;

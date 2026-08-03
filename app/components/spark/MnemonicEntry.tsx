@@ -41,6 +41,7 @@ export const MnemonicEntry = ({
   );
 
   const anyEmpty = words.slice(0, wordCount).some((w) => w.length === 0);
+  const anyInvalid = errors.slice(0, wordCount).some(Boolean);
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
     if (e.key === " " || e.key === "Enter" || e.key === "Tab") {
@@ -135,7 +136,7 @@ export const MnemonicEntry = ({
       <button
         type="button"
         onClick={continueWithPhrase}
-        disabled={anyEmpty || busy}
+        disabled={anyEmpty || anyInvalid || busy}
         className="mt-6 w-full min-h-12 bg-accent-subtle text-accent font-semibold py-3 px-4 rounded-lg border border-accent/30 hover:bg-accent/25 transition disabled:opacity-50 disabled:pointer-events-none touch-manipulation"
       >
         {busy ? t("Checking phrase...") : t("Continue")}

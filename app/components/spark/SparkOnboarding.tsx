@@ -32,7 +32,13 @@ export const SparkOnboarding = ({
     meta,
   } = useSpark();
 
-  const [mode, setMode] = useState<"create" | "restore">(initialMode);
+  // Gate *starting* restore on missing meta. Once restore is in flight
+  // (confirm/done), keep that UI even after register sets meta — otherwise
+  // success flips into the create "Continue backup" screen.
+  const canStartRestore = !meta;
+  const [mode, setMode] = useState<"create" | "restore">(() =>
+    initialMode === "restore" && canStartRestore ? "restore" : "create"
+  );
   const [createStep, setCreateStep] = useState<CreateStep>("explain");
   const [restoreStep, setRestoreStep] = useState<RestoreStep>("import");
   const [phrase, setPhrase] = useState<string | null>(null);
@@ -40,22 +46,41 @@ export const SparkOnboarding = ({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const restoreInFlight =
+    mode === "restore" &&
+    (restoreStep === "confirm" ||
+      restoreStep === "done" ||
+      (restoreStep === "import" && canStartRestore));
+  const activeMode = restoreInFlight ? "restore" : "create";
+  const continuingBackup = Boolean(meta && phrase && activeMode === "create");
+
   const title =
-    mode === "create"
+    activeMode === "create"
       ? t("Create a Spark wallet")
       : t("Restore a Spark wallet");
 
   const handleBack = () => {
     setError(null);
-    if (mode === "create") {
-      if (createStep === "generate") setCreateStep("explain");
+    if (activeMode === "create") {
+      if (createStep === "explain") onClose();
+      else if (createStep === "generate") setCreateStep("explain");
       else if (createStep === "verify") setCreateStep("generate");
     } else if (restoreStep === "confirm") setRestoreStep("import");
   };
 
   const showBack =
-    (mode === "create" && createStep !== "ready") ||
-    (mode === "restore" && restoreStep === "confirm");
+    (activeMode === "create" && createStep !== "ready") ||
+    (activeMode === "restore" && restoreStep === "confirm");
+
+  const switchToRestore = () => {
+    if (!canStartRestore) return;
+    setError(null);
+    setMode("restore");
+    setRestoreStep("import");
+    setPhrase(null);
+    setDerivedAddress(null);
+    setCreateStep("explain");
+  };
 
   const handleCreate = async () => {
     setError(null);
@@ -76,12 +101,15 @@ export const SparkOnboarding = ({
   };
 
   const handleVerified = async () => {
+    setError(null);
     try {
       await setBackupVerified(true);
-    } catch {
-      // metadata flag is best-effort; the local checkpoint still passes
+      setCreateStep("ready");
+    } catch (err: any) {
+      setError(
+        err?.message ?? t("Could not save backup verification. Try again.")
+      );
     }
-    setCreateStep("ready");
   };
 
   const handleRestoreImport = async (imported: string) => {
@@ -111,6 +139,7 @@ export const SparkOnboarding = ({
       setRestoreStep("done");
     } catch (err: any) {
       setError(err?.message ?? t("Failed to restore wallet."));
+    } finally {
       setBusy(false);
     }
   };
@@ -136,30 +165,38 @@ export const SparkOnboarding = ({
         </Alert>
       )}
 
-      {mode === "create" && createStep === "explain" && (
+      {activeMode === "create" && createStep === "explain" && (
         <div className="space-y-5">
           <div className="space-y-3 text-sm leading-relaxed">
-            <p>{t("This wallet is yours alone.")}</p>
-            <p>
-              {t(
-                "Your 12-word backup phrase is the only way to access it. If you lose it, no one — not even Aratiri — can help you recover it."
-              )}
-            </p>
+            {continuingBackup ? (
+              <p>{t("Continue writing down your backup")}</p>
+            ) : (
+              <>
+                <p>{t("This wallet is yours alone.")}</p>
+                <p>
+                  {t(
+                    "Your 12-word backup phrase is the only way to access it. If you lose it, no one — not even Aratiri — can help you recover it."
+                  )}
+                </p>
+              </>
+            )}
           </div>
-          <div className="grid grid-cols-2 gap-2 text-sm rounded-lg border border-panel-edge divide-x divide-panel-edge">
-            <div className="p-3">
-              <p className="font-semibold mb-1">{t("Custodial")}</p>
-              <p className="text-muted">{t("Aratiri holds your keys.")}</p>
+          {!continuingBackup && (
+            <div className="grid grid-cols-2 gap-2 text-sm rounded-lg border border-panel-edge divide-x divide-panel-edge">
+              <div className="p-3">
+                <p className="font-semibold mb-1">{t("Custodial")}</p>
+                <p className="text-muted">{t("Aratiri holds your keys.")}</p>
+              </div>
+              <div className="p-3 bg-accent-subtle/40">
+                <p className="font-semibold mb-1 text-accent">
+                  {t("Self-custody")}
+                </p>
+                <p className="text-muted">
+                  {t("You hold your keys. Aratiri can't recover them.")}
+                </p>
+              </div>
             </div>
-            <div className="p-3 bg-accent-subtle/40">
-              <p className="font-semibold mb-1 text-accent">
-                {t("Self-custody")}
-              </p>
-              <p className="text-muted">
-                {t("You hold your keys. Aratiri can't recover them.")}
-              </p>
-            </div>
-          </div>
+          )}
           <button
             type="button"
             onClick={handleCreate}
@@ -167,23 +204,25 @@ export const SparkOnboarding = ({
             className="w-full min-h-12 bg-accent-subtle text-accent font-semibold py-3 px-4 rounded-lg border border-accent/30 hover:bg-accent/25 transition disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 touch-manipulation"
           >
             <KeyRound className="w-5 h-5" aria-hidden="true" />
-            {busy ? t("Generating...") : t("Create a Spark wallet")}
+            {busy
+              ? t("Generating...")
+              : continuingBackup
+                ? t("Continue backup")
+                : t("Create a Spark wallet")}
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setError(null);
-              setMode("restore");
-              setRestoreStep("import");
-            }}
-            className="w-full min-h-12 text-sm font-semibold text-muted hover:text-foreground transition touch-manipulation"
-          >
-            {t("Restore a wallet")}
-          </button>
+          {canStartRestore && (
+            <button
+              type="button"
+              onClick={switchToRestore}
+              className="w-full min-h-12 text-sm font-semibold text-muted hover:text-foreground transition touch-manipulation"
+            >
+              {t("Restore a wallet")}
+            </button>
+          )}
         </div>
       )}
 
-      {mode === "create" && createStep === "generate" && phrase && (
+      {activeMode === "create" && createStep === "generate" && phrase && (
         <div className="space-y-5">
           <Alert variant="danger">
             {t(
@@ -204,11 +243,11 @@ export const SparkOnboarding = ({
         </div>
       )}
 
-      {mode === "create" && createStep === "verify" && phrase && (
+      {activeMode === "create" && createStep === "verify" && phrase && (
         <MnemonicVerify mnemonic={phrase} onVerified={handleVerified} />
       )}
 
-      {mode === "create" && createStep === "ready" && (
+      {activeMode === "create" && createStep === "ready" && (
         <div className="space-y-5 text-center">
           <div className="flex justify-center">
             <ShieldCheck className="w-10 h-10 text-success" aria-hidden="true" />
@@ -232,11 +271,11 @@ export const SparkOnboarding = ({
         </div>
       )}
 
-      {mode === "restore" && restoreStep === "import" && (
+      {activeMode === "restore" && restoreStep === "import" && (
         <MnemonicEntry onContinue={handleRestoreImport} busy={busy} />
       )}
 
-      {mode === "restore" && restoreStep === "confirm" && (
+      {activeMode === "restore" && restoreStep === "confirm" && (
         <div className="space-y-5">
           <p className="text-sm text-muted">
             {t("This is the wallet you're restoring:")}
@@ -262,7 +301,7 @@ export const SparkOnboarding = ({
         </div>
       )}
 
-      {mode === "restore" && restoreStep === "done" && (
+      {activeMode === "restore" && restoreStep === "done" && (
         <div className="space-y-5 text-center">
           <div className="flex justify-center">
             <ShieldCheck className="w-10 h-10 text-success" aria-hidden="true" />

@@ -68,20 +68,20 @@ export const ForgotPasswordScreen = ({
 
   return (
     <AuthShell
-      subtitle={t("Reset your password")}
+      variant="form"
+      subtitle={t("Bitcoin Lightning Wallet")}
+      railTitle={t("Reset your password")}
       topLeft={
-        <div className="absolute top-3 left-3 z-10">
-          <IconButton
-            label={t("Back")}
-            onClick={() =>
-              isVerification
-                ? setIsVerification(false)
-                : setShowForgotPassword(false)
-            }
-          >
-            <ArrowLeft className="w-5 h-5" aria-hidden="true" />
-          </IconButton>
-        </div>
+        <IconButton
+          label={t("Back")}
+          onClick={() =>
+            isVerification
+              ? setIsVerification(false)
+              : setShowForgotPassword(false)
+          }
+        >
+          <ArrowLeft className="w-5 h-5" aria-hidden="true" />
+        </IconButton>
       }
     >
       {error && <Alert variant="danger">{error}</Alert>}

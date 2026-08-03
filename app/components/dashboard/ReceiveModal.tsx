@@ -136,16 +136,18 @@ export const ReceiveModal = ({
         >
           {t("Bitcoin")}
         </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "request"}
-          id="tab-request"
-          onClick={() => setActiveTab("request")}
-          className={tabClass("request")}
-        >
-          {t("Request Amount")}
-        </button>
+        {walletKind === "custodial" && (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "request"}
+            id="tab-request"
+            onClick={() => setActiveTab("request")}
+            className={tabClass("request")}
+          >
+            {t("Request Amount")}
+          </button>
+        )}
       </div>
 
       <div className="p-4 sm:p-6 overflow-y-auto">
@@ -264,12 +266,6 @@ export const ReceiveModal = ({
                 {t("Share")}
               </button>
             )}
-          </div>
-        )}
-
-        {activeTab === "request" && walletKind === "spark" && (
-          <div role="tabpanel" aria-labelledby="tab-request">
-            <SparkLightningReceive requireAmount />
           </div>
         )}
 

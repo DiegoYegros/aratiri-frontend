@@ -11,7 +11,7 @@ vi.mock("@/app/lib/api", () => ({
   apiCall: vi.fn(),
 }));
 
-function renderLogin() {
+function renderLogin(onEnterSpark?: () => void) {
   return render(
     <LanguageProvider>
       <LoginScreen
@@ -19,6 +19,7 @@ function renderLogin() {
         setIsAuthenticated={vi.fn()}
         setShowRegister={vi.fn()}
         setShowForgotPassword={vi.fn()}
+        onEnterSpark={onEnterSpark}
       />
     </LanguageProvider>
   );
@@ -41,17 +42,33 @@ describe("LoginScreen accessibility smoke", () => {
 
     expect(screen.getByRole("heading", { name: "Aratiri" })).toBeInTheDocument();
     expect(screen.getByText("Bitcoin Lightning Wallet")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Sign In" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Sign In" })
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Forgot Password?" })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Create new account" })
+      screen.getByRole("button", { name: /Create one/ })
     ).toBeInTheDocument();
 
     // Auth Zap must not pulse
     const brand = document.querySelector(".text-accent");
     expect(brand).toBeTruthy();
     expect(brand?.className).not.toContain("animate-pulse");
+  });
+
+  it("places a single Spark entry on the brand stage, not under Google", () => {
+    renderLogin(vi.fn());
+
+    const spark = screen.getByRole("button", {
+      name: "Self-custody with Spark",
+    });
+    const google = screen.getByTestId("google-login-stub");
+
+    // Stage comes before the rail in DOM — Spark precedes Google
+    expect(
+      spark.compareDocumentPosition(google) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
   });
 });

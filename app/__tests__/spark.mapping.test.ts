@@ -206,4 +206,57 @@ describe("describeSparkError", () => {
     );
     expect(describeSparkError(null, "fallback", clockMessage)).toBe("fallback");
   });
+
+  it("maps already-registered / identity-taken conflicts to device-scoped English", () => {
+    expect(
+      describeSparkError(
+        new Error("A Spark wallet is already registered for this user"),
+        "fallback",
+        clockMessage
+      )
+    ).toBe("A Spark wallet is already set up on this device.");
+    expect(
+      describeSparkError(
+        new Error(
+          "This identity public key is already registered to another user"
+        ),
+        "fallback",
+        clockMessage
+      )
+    ).toBe("This recovery phrase is already linked on this device.");
+    expect(
+      describeSparkError(
+        new Error("spark identity taken"),
+        "fallback",
+        clockMessage
+      )
+    ).toBe("This recovery phrase is already linked on this device.");
+  });
+
+  it("does not remap bare/generic HTTP 409s used by payment paths", () => {
+    expect(
+      describeSparkError(new Error("HTTP Error: 409"), "fallback", clockMessage)
+    ).toBe("HTTP Error: 409");
+    expect(
+      describeSparkError(
+        Object.assign(new Error("Conflict"), { status: 409 }),
+        "fallback",
+        clockMessage
+      )
+    ).toBe("Conflict");
+    expect(
+      describeSparkError(
+        new Error("UTXO conflict while building transfer"),
+        "fallback",
+        clockMessage
+      )
+    ).toBe("UTXO conflict while building transfer");
+    expect(
+      describeSparkError(
+        new Error("amount must be at least 409 sats"),
+        "fallback",
+        clockMessage
+      )
+    ).toBe("amount must be at least 409 sats");
+  });
 });

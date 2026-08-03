@@ -6,13 +6,13 @@ import {
   type SparkContextValue,
 } from "@/app/components/spark/SparkProvider";
 import { LanguageProvider } from "@/app/LanguageProvider";
+import { SPARK_WALLET_STORAGE_KEY } from "@/app/lib/spark/storage";
 
-const apiMocks = vi.hoisted(() => ({
-  getSparkWallet: vi.fn(),
-  registerSparkWallet: vi.fn(),
-  setSparkBackupVerified: vi.fn(),
-  setSparkPrivacy: vi.fn(),
-  forgetSparkWallet: vi.fn(),
+const storageMocks = vi.hoisted(() => ({
+  loadSparkWallet: vi.fn(),
+  saveSparkWallet: vi.fn(),
+  updateSparkWallet: vi.fn(),
+  clearSparkWallet: vi.fn(),
 }));
 
 const sdkMocks = vi.hoisted(() => ({
@@ -25,13 +25,18 @@ const sdkMocks = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("@/app/lib/api", () => ({
-  getSparkWallet: apiMocks.getSparkWallet,
-  registerSparkWallet: apiMocks.registerSparkWallet,
-  setSparkBackupVerified: apiMocks.setSparkBackupVerified,
-  setSparkPrivacy: apiMocks.setSparkPrivacy,
-  forgetSparkWallet: apiMocks.forgetSparkWallet,
-}));
+vi.mock("@/app/lib/spark/storage", async () => {
+  const actual = await vi.importActual<typeof import("@/app/lib/spark/storage")>(
+    "@/app/lib/spark/storage"
+  );
+  return {
+    ...actual,
+    loadSparkWallet: storageMocks.loadSparkWallet,
+    saveSparkWallet: storageMocks.saveSparkWallet,
+    updateSparkWallet: storageMocks.updateSparkWallet,
+    clearSparkWallet: storageMocks.clearSparkWallet,
+  };
+});
 
 vi.mock("@buildonspark/spark-sdk", () => ({
   SparkReadonlyClient: { createPublic: sdkMocks.createPublic },
@@ -114,16 +119,15 @@ const errorText = () => screen.getByTestId("error").textContent;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  apiMocks.registerSparkWallet.mockImplementation((body: unknown) =>
-    Promise.resolve(metaFixture({ ...(body as object) }))
+  localStorage.removeItem(SPARK_WALLET_STORAGE_KEY);
+  storageMocks.saveSparkWallet.mockImplementation((body: unknown) => {
+    const meta = metaFixture({ ...(body as object) });
+    return meta;
+  });
+  storageMocks.updateSparkWallet.mockImplementation((patch: unknown) =>
+    metaFixture({ ...(patch as object) })
   );
-  apiMocks.setSparkBackupVerified.mockImplementation((v: boolean) =>
-    Promise.resolve(metaFixture({ backup_verified: v }))
-  );
-  apiMocks.setSparkPrivacy.mockImplementation((v: boolean) =>
-    Promise.resolve(metaFixture({ privacy_enabled: v }))
-  );
-  apiMocks.forgetSparkWallet.mockResolvedValue({});
+  storageMocks.clearSparkWallet.mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -132,7 +136,7 @@ afterEach(() => {
 
 describe("SparkProvider lifecycle", () => {
   it("reports not-created when no wallet is registered", async () => {
-    apiMocks.getSparkWallet.mockResolvedValue(null);
+    storageMocks.loadSparkWallet.mockReturnValue(null);
     renderProvider();
     await waitFor(() => expect(status()).toBe("not-created"));
     expect(balance()).toBe("null");
@@ -140,7 +144,7 @@ describe("SparkProvider lifecycle", () => {
   });
 
   it("reports not-created for incomplete wallet meta (empty {} / missing identity)", async () => {
-    apiMocks.getSparkWallet.mockResolvedValue({});
+    storageMocks.loadSparkWallet.mockReturnValue({});
     renderProvider();
     await waitFor(() => expect(status()).toBe("not-created"));
     expect(balance()).toBe("null");
@@ -151,7 +155,7 @@ describe("SparkProvider lifecycle", () => {
   it("locked + privacy off: balance served from the readonly client", async () => {
     const readonly = makeReadonly();
     sdkMocks.createPublic.mockReturnValue(readonly);
-    apiMocks.getSparkWallet.mockResolvedValue(metaFixture());
+    storageMocks.loadSparkWallet.mockReturnValue(metaFixture());
 
     renderProvider();
     await waitFor(() => expect(status()).toBe("locked"));
@@ -165,7 +169,7 @@ describe("SparkProvider lifecycle", () => {
   it("locked + privacy on: balance stays hidden, never a false zero", async () => {
     const readonly = makeReadonly();
     sdkMocks.createPublic.mockReturnValue(readonly);
-    apiMocks.getSparkWallet.mockResolvedValue(
+    storageMocks.loadSparkWallet.mockReturnValue(
       metaFixture({ privacy_enabled: true })
     );
 
@@ -181,7 +185,7 @@ describe("SparkProvider lifecycle", () => {
     const wallet = makeWallet();
     sdkMocks.createPublic.mockReturnValue(readonly);
     sdkMocks.getOrCreateWallet.mockResolvedValue({ wallet, mnemonic: PHRASE });
-    apiMocks.getSparkWallet.mockResolvedValue(metaFixture());
+    storageMocks.loadSparkWallet.mockReturnValue(metaFixture());
 
     renderProvider();
     await waitFor(() => expect(status()).toBe("locked"));
@@ -208,7 +212,7 @@ describe("SparkProvider lifecycle", () => {
       cleanup: vi.fn().mockResolvedValue(undefined),
     });
     sdkMocks.getOrCreateWallet.mockResolvedValue({ wallet, mnemonic: PHRASE });
-    apiMocks.getSparkWallet.mockResolvedValue(metaFixture());
+    storageMocks.loadSparkWallet.mockReturnValue(metaFixture());
 
     renderProvider();
     await waitFor(() => expect(status()).toBe("locked"));
@@ -231,7 +235,7 @@ describe("SparkProvider lifecycle", () => {
     sdkMocks.getOrCreateWallet.mockRejectedValue(
       new Error("invalid expiry_time: device clock skew")
     );
-    apiMocks.getSparkWallet.mockResolvedValue(metaFixture());
+    storageMocks.loadSparkWallet.mockReturnValue(metaFixture());
 
     renderProvider();
     await waitFor(() => expect(status()).toBe("locked"));
@@ -246,13 +250,13 @@ describe("SparkProvider lifecycle", () => {
     await waitFor(() => expect(errorText()).toMatch(/clock looks wrong/));
   });
 
-  it("createNew returns the phrase and registers public metadata only", async () => {
+  it("createNew returns the phrase and saves public metadata only", async () => {
     const wallet = makeWallet();
     sdkMocks.getOrCreateWallet.mockResolvedValue({
       wallet,
       mnemonic: PHRASE,
     });
-    apiMocks.getSparkWallet.mockResolvedValue(null);
+    storageMocks.loadSparkWallet.mockReturnValue(null);
 
     renderProvider();
     await waitFor(() => expect(status()).toBe("not-created"));
@@ -263,13 +267,118 @@ describe("SparkProvider lifecycle", () => {
     });
 
     expect(phrase).toBe(PHRASE);
-    expect(apiMocks.registerSparkWallet).toHaveBeenCalledWith({
+    expect(storageMocks.saveSparkWallet).toHaveBeenCalledWith({
       identity_public_key: IDENTITY,
       spark_address: SPARK_ADDRESS,
       network: "MAINNET",
       account_index: 1,
+      backup_verified: false,
+      privacy_enabled: false,
     });
     expect(status()).toBe("unlocked");
+  });
+
+  it("restore rejects when a wallet is already linked", async () => {
+    storageMocks.loadSparkWallet.mockReturnValue(metaFixture());
+    sdkMocks.createPublic.mockReturnValue(makeReadonly());
+
+    renderProvider();
+    await waitFor(() => expect(status()).toBe("locked"));
+
+    let restoreErr: unknown;
+    await act(async () => {
+      try {
+        await ctx.restore(PHRASE);
+      } catch (e) {
+        restoreErr = e;
+      }
+    });
+
+    expect(restoreErr).toBeInstanceOf(Error);
+    expect((restoreErr as Error).message).toMatch(/already set up on this device/);
+    expect(sdkMocks.getOrCreateWallet).not.toHaveBeenCalled();
+    expect(storageMocks.saveSparkWallet).not.toHaveBeenCalled();
+  });
+
+  it("createNew rejects when a wallet is already linked", async () => {
+    storageMocks.loadSparkWallet.mockReturnValue(metaFixture());
+    sdkMocks.createPublic.mockReturnValue(makeReadonly());
+
+    renderProvider();
+    await waitFor(() => expect(status()).toBe("locked"));
+
+    let createErr: unknown;
+    await act(async () => {
+      try {
+        await ctx.createNew();
+      } catch (e) {
+        createErr = e;
+      }
+    });
+
+    expect(createErr).toBeInstanceOf(Error);
+    expect((createErr as Error).message).toMatch(/already set up on this device/);
+    expect(sdkMocks.getOrCreateWallet).not.toHaveBeenCalled();
+  });
+
+  it("createNew cleans up the SDK wallet when local save fails", async () => {
+    const wallet = makeWallet();
+    sdkMocks.getOrCreateWallet.mockResolvedValue({
+      wallet,
+      mnemonic: PHRASE,
+    });
+    storageMocks.loadSparkWallet.mockReturnValue(null);
+    storageMocks.saveSparkWallet.mockImplementation(() => {
+      throw new Error("Identity already registered");
+    });
+
+    renderProvider();
+    await waitFor(() => expect(status()).toBe("not-created"));
+
+    let createErr: unknown;
+    await act(async () => {
+      try {
+        await ctx.createNew();
+      } catch (e) {
+        createErr = e;
+      }
+    });
+
+    expect(createErr).toBeInstanceOf(Error);
+    expect((createErr as Error).message).toMatch(/already linked|already set up/);
+    expect(wallet.cleanup).toHaveBeenCalled();
+    expect(status()).toBe("not-created");
+    expect(screen.getByTestId("wallet").textContent).toBe("no");
+  });
+
+  it("restore cleans up the SDK wallet when local save fails", async () => {
+    const wallet = makeWallet();
+    sdkMocks.getOrCreateWallet.mockResolvedValue({
+      wallet,
+      mnemonic: PHRASE,
+    });
+    storageMocks.loadSparkWallet.mockReturnValue(null);
+    storageMocks.saveSparkWallet.mockImplementation(() => {
+      throw new Error("spark identity taken");
+    });
+
+    renderProvider();
+    await waitFor(() => expect(status()).toBe("not-created"));
+
+    let restoreErr: unknown;
+    await act(async () => {
+      try {
+        await ctx.restore(PHRASE);
+      } catch (e) {
+        restoreErr = e;
+      }
+    });
+
+    expect(restoreErr).toBeInstanceOf(Error);
+    expect((restoreErr as Error).message).toMatch(/on this device/);
+    expect(wallet.cleanup).toHaveBeenCalled();
+    expect(status()).toBe("not-created");
+    expect(screen.getByTestId("wallet").textContent).toBe("no");
   });
 
   it("lock clears the mnemonic/wallet but the readonly view still serves", async () => {
@@ -277,7 +386,7 @@ describe("SparkProvider lifecycle", () => {
     const wallet = makeWallet();
     sdkMocks.createPublic.mockReturnValue(readonly);
     sdkMocks.getOrCreateWallet.mockResolvedValue({ wallet, mnemonic: PHRASE });
-    apiMocks.getSparkWallet.mockResolvedValue(metaFixture());
+    storageMocks.loadSparkWallet.mockReturnValue(metaFixture());
 
     renderProvider();
     await waitFor(() => expect(status()).toBe("locked"));
@@ -296,10 +405,35 @@ describe("SparkProvider lifecycle", () => {
     expect(readonly.getAvailableBalance).toHaveBeenCalledWith(SPARK_ADDRESS);
   });
 
+  it("force-logout locks an unlocked wallet without clearing device meta", async () => {
+    const wallet = makeWallet();
+    sdkMocks.getOrCreateWallet.mockResolvedValue({ wallet, mnemonic: PHRASE });
+    storageMocks.loadSparkWallet.mockReturnValue(metaFixture());
+
+    renderProvider();
+    await waitFor(() => expect(status()).toBe("locked"));
+    await act(async () => {
+      await ctx.unlock(PHRASE);
+    });
+    expect(status()).toBe("unlocked");
+
+    await act(async () => {
+      window.dispatchEvent(new Event("force-logout"));
+    });
+
+    await waitFor(() => expect(status()).toBe("locked"));
+    expect(screen.getByTestId("wallet").textContent).toBe("no");
+    expect(wallet.cleanup).toHaveBeenCalled();
+    expect(storageMocks.clearSparkWallet).not.toHaveBeenCalled();
+  });
+
   it("setPrivacy on a locked wallet hides the balance once enabled", async () => {
     const readonly = makeReadonly();
     sdkMocks.createPublic.mockReturnValue(readonly);
-    apiMocks.getSparkWallet.mockResolvedValue(metaFixture());
+    storageMocks.loadSparkWallet.mockReturnValue(metaFixture());
+    storageMocks.updateSparkWallet.mockReturnValue(
+      metaFixture({ privacy_enabled: true })
+    );
 
     renderProvider();
     await waitFor(() => expect(status()).toBe("locked"));
@@ -310,13 +444,15 @@ describe("SparkProvider lifecycle", () => {
     });
     expect(screen.getByTestId("privacy").textContent).toBe("true");
     expect(balance()).toBe("null");
-    expect(apiMocks.setSparkPrivacy).toHaveBeenCalledWith(true);
+    expect(storageMocks.updateSparkWallet).toHaveBeenCalledWith({
+      privacy_enabled: true,
+    });
   });
 
   it("forget removes metadata and returns to not-created", async () => {
     const readonly = makeReadonly();
     sdkMocks.createPublic.mockReturnValue(readonly);
-    apiMocks.getSparkWallet.mockResolvedValue(metaFixture());
+    storageMocks.loadSparkWallet.mockReturnValue(metaFixture());
 
     renderProvider();
     await waitFor(() => expect(status()).toBe("locked"));
@@ -327,6 +463,6 @@ describe("SparkProvider lifecycle", () => {
 
     expect(status()).toBe("not-created");
     expect(screen.getByTestId("meta").textContent).toBe("null");
-    expect(apiMocks.forgetSparkWallet).toHaveBeenCalledTimes(1);
+    expect(storageMocks.clearSparkWallet).toHaveBeenCalledTimes(1);
   });
 });

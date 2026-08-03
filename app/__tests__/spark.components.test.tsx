@@ -3,6 +3,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { LanguageProvider } from "@/app/LanguageProvider";
 import { MnemonicVerify } from "@/app/components/spark/MnemonicVerify";
+import { MnemonicEntry } from "@/app/components/spark/MnemonicEntry";
+import { SparkOnboarding } from "@/app/components/spark/SparkOnboarding";
 import { SparkSpeedChooser } from "@/app/components/spark/SparkSpeedChooser";
 import { SparkFeeLine } from "@/app/components/spark/SparkFeeLine";
 import { SparkHiddenState } from "@/app/components/spark/SparkHiddenState";
@@ -21,6 +23,15 @@ const renderWithLang = (node: React.ReactNode) =>
 
 const PHRASE =
   "abandon ability able about above absent absorb abstract absurd abuse access accident";
+
+const META = {
+  spark_address: "spark1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq",
+  identity_public_key: "a".repeat(64),
+  network: "MAINNET",
+  account_index: 1,
+  backup_verified: false,
+  privacy_enabled: false,
+};
 
 describe("MnemonicVerify", () => {
   it("challenges positions 4, 7, 10 and advances on correct answers", async () => {
@@ -292,5 +303,202 @@ describe("SparkSecurityPanel", () => {
     await waitFor(() => expect(confirm).toBeEnabled());
     await user.click(confirm);
     expect(forget).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("MnemonicEntry", () => {
+  it("disables Continue when any word fails WORD_PATTERN", async () => {
+    const user = userEvent.setup();
+    const onContinue = vi.fn();
+    renderWithLang(<MnemonicEntry onContinue={onContinue} />);
+
+    const inputs = screen.getAllByLabelText(/^Word /);
+    for (let i = 0; i < 12; i++) {
+      await user.type(inputs[i], i === 3 ? "ab1" : "abandon");
+    }
+
+    const continueBtn = screen.getByRole("button", { name: "Continue" });
+    expect(continueBtn).toBeDisabled();
+    expect(
+      screen.getByText(/Each word must be lower-case letters/)
+    ).toBeInTheDocument();
+    expect(onContinue).not.toHaveBeenCalled();
+  });
+});
+
+describe("SparkOnboarding", () => {
+  const baseSpark = () => ({
+    createNew: vi.fn(),
+    restore: vi.fn(),
+    deriveSparkAddress: vi.fn(),
+    setBackupVerified: vi.fn().mockResolvedValue(undefined),
+    meta: null as typeof META | null,
+  });
+
+  it("after create, Back to explain hides Restore and offers Continue backup", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const spark = baseSpark();
+    spark.createNew.mockImplementation(async () => {
+      spark.meta = META;
+      mocks.useSpark.mockReturnValue({ ...spark });
+      return PHRASE;
+    });
+    mocks.useSpark.mockReturnValue(spark);
+
+    renderWithLang(
+      <SparkOnboarding onClose={onClose} onComplete={vi.fn()} />
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Restore a wallet" })
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Create a Spark wallet" })
+    );
+    await waitFor(() =>
+      expect(screen.getByText(/Don't screenshot/)).toBeInTheDocument()
+    );
+
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(
+      screen.queryByRole("button", { name: "Restore a wallet" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Continue backup" })
+    ).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("Back on explain closes the modal", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    mocks.useSpark.mockReturnValue(baseSpark());
+
+    renderWithLang(
+      <SparkOnboarding onClose={onClose} onComplete={vi.fn()} />
+    );
+
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks restore path when meta is present", () => {
+    mocks.useSpark.mockReturnValue({ ...baseSpark(), meta: META });
+
+    renderWithLang(
+      <SparkOnboarding
+        initialMode="restore"
+        onClose={vi.fn()}
+        onComplete={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Restore a wallet" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Enter your backup phrase/)
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Create a Spark wallet" })
+    ).toBeInTheDocument();
+  });
+
+  it("keeps restore success UI after register sets meta", async () => {
+    const user = userEvent.setup();
+    const onComplete = vi.fn();
+    const spark = baseSpark();
+    spark.deriveSparkAddress.mockResolvedValue(META.spark_address);
+    spark.restore.mockImplementation(async () => {
+      spark.meta = META;
+      mocks.useSpark.mockReturnValue({ ...spark });
+    });
+    mocks.useSpark.mockReturnValue(spark);
+
+    renderWithLang(
+      <SparkOnboarding
+        initialMode="restore"
+        onClose={vi.fn()}
+        onComplete={onComplete}
+      />
+    );
+
+    const first = screen.getByLabelText("Word 1");
+    fireEvent.paste(first, {
+      clipboardData: { getData: () => PHRASE },
+    });
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Restore this wallet" })
+      ).toBeInTheDocument()
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Restore this wallet" })
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText("Wallet restored.")).toBeInTheDocument()
+    );
+    expect(
+      screen.queryByRole("button", { name: "Continue backup" })
+    ).not.toBeInTheDocument();
+    expect(spark.restore).toHaveBeenCalledWith(PHRASE);
+
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not advance to ready when setBackupVerified fails", async () => {
+    const user = userEvent.setup();
+    const setBackupVerified = vi
+      .fn()
+      .mockRejectedValue(new Error("Could not save backup verification. Try again."));
+    const spark = {
+      ...baseSpark(),
+      meta: META,
+      setBackupVerified,
+      createNew: vi.fn().mockResolvedValue(PHRASE),
+    };
+    // Start mid-flow: create then jump via Continue backup after seeding phrase
+    spark.createNew.mockImplementation(async () => {
+      spark.meta = META;
+      mocks.useSpark.mockReturnValue(spark);
+      return PHRASE;
+    });
+    mocks.useSpark.mockReturnValue({ ...spark, meta: null });
+
+    renderWithLang(
+      <SparkOnboarding onClose={vi.fn()} onComplete={vi.fn()} />
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Create a Spark wallet" })
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "I've written it down" })
+      ).toBeInTheDocument()
+    );
+    await user.click(
+      screen.getByRole("button", { name: "I've written it down" })
+    );
+
+    const words = PHRASE.split(" ");
+    await user.click(screen.getByRole("button", { name: words[3] }));
+    await user.click(screen.getByRole("button", { name: words[6] }));
+    await user.click(screen.getByRole("button", { name: words[9] }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText("Could not save backup verification. Try again.")
+      ).toBeInTheDocument()
+    );
+    expect(screen.queryByText("Your backup is verified.")).not.toBeInTheDocument();
+    expect(setBackupVerified).toHaveBeenCalledWith(true);
   });
 });

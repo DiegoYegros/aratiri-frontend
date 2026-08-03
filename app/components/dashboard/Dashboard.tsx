@@ -6,6 +6,7 @@ import {
   ArrowRight,
   Eye,
   EyeOff,
+  LogIn,
   LogOut,
   Settings,
   Zap,
@@ -40,18 +41,31 @@ import { SparkUnlockModal } from "../spark/SparkUnlockModal";
 import { useSpark } from "../spark/SparkProvider";
 
 type DashboardSection = "custodial" | "spark" | "requests";
+export type DashboardAccessMode = "spark" | "full";
 
-export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
+export const Dashboard = ({
+  setIsAuthenticated,
+  setToken,
+  accessMode = "full",
+  onSignIn,
+}: {
+  setIsAuthenticated: (auth: boolean) => void;
+  setToken: (token: string | null) => void;
+  accessMode?: DashboardAccessMode;
+  onSignIn?: () => void;
+}) => {
+  const isSparkOnly = accessMode === "spark";
   const [account, setAccount] = useState<Account | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!isSparkOnly);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState("");
   const { notifications, addNotification, removeNotification } = useNotifier();
   const [balanceVisible, setBalanceVisible] = useState(false);
   const [isClient, setIsClient] = useState(false);
-  const [activeSection, setActiveSection] =
-    useState<DashboardSection>("custodial");
+  const [activeSection, setActiveSection] = useState<DashboardSection>(
+    isSparkOnly ? "spark" : "custodial"
+  );
   const t = useTranslation();
   const { language } = useLanguage();
   const locale = language === "es" ? "es-ES" : "en-US";
@@ -95,6 +109,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
   );
 
   const fetchAllData = useCallback(async () => {
+    if (isSparkOnly) return;
     try {
       const [accountData, transData] = await Promise.all([
         apiCall("/accounts/account"),
@@ -112,7 +127,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
     } catch (err: any) {
       setError(t("Failed to fetch data: {error}", { error: err.message }));
     }
-  }, [t]);
+  }, [isSparkOnly, t]);
 
   const handleRefresh = async () => {
     if (isRefreshing || refreshLock.current) return;
@@ -122,9 +137,12 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
     setIsRefreshing(true);
 
     await Promise.all([
-      fetchAllData(),
+      isSparkOnly ? spark.refresh() : fetchAllData(),
       refreshBtcPrice(),
-      requestsRefreshRef.current?.() ?? Promise.resolve(),
+      isSparkOnly
+        ? Promise.resolve()
+        : (requestsRefreshRef.current?.() ?? Promise.resolve()),
+      isSparkOnly ? Promise.resolve() : spark.refresh(),
     ]);
 
     const elapsedTime = Date.now() - startTime;
@@ -158,6 +176,10 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
   };
 
   useEffect(() => {
+    if (isSparkOnly) {
+      setLoading(false);
+      return;
+    }
     const loadData = async () => {
       setLoading(true);
       setError("");
@@ -165,7 +187,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
       setLoading(false);
     };
     loadData();
-  }, [fetchAllData]);
+  }, [fetchAllData, isSparkOnly]);
 
   const formatSparkBalance = () => {
     if (!isClient || !balanceVisible) return "•••••••";
@@ -228,6 +250,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
   }, [t]);
 
   useEffect(() => {
+    if (isSparkOnly) return;
     const token = localStorage.getItem("aratiri_accessToken");
     if (!token) return;
 
@@ -299,7 +322,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
         ws.close();
       }
     };
-  }, []);
+  }, [isSparkOnly]);
 
   useEffect(() => {
     const storedVisibility = localStorage.getItem("balanceVisible");
@@ -310,6 +333,18 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
   }, []);
 
   const logout = async () => {
+    // Clear in-memory Spark secrets on any exit from the shell; keep device meta.
+    if (spark.status === "unlocked") {
+      try {
+        await spark.lock();
+      } catch {
+        // best effort — still leave the shell
+      }
+    }
+    if (isSparkOnly) {
+      onSignIn?.();
+      return;
+    }
     const refreshToken = localStorage.getItem("aratiri_refreshToken");
     try {
       if (refreshToken) {
@@ -321,6 +356,7 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
     } catch {
       // Clear client session regardless of server logout result
     } finally {
+      // Intentionally leave aratiri_spark_wallet_v1 intact.
       localStorage.removeItem("aratiri_accessToken");
       localStorage.removeItem("aratiri_refreshToken");
       setToken("");
@@ -460,45 +496,54 @@ export const Dashboard = ({ setIsAuthenticated, setToken }: any) => {
               >
                 <Settings className="w-5 h-5" aria-hidden="true" />
               </IconButton>
-              <IconButton label={t("Log out")} onClick={logout}>
-                <LogOut className="w-5 h-5" aria-hidden="true" />
+              <IconButton
+                label={isSparkOnly ? t("Sign In") : t("Log out")}
+                onClick={logout}
+              >
+                {isSparkOnly ? (
+                  <LogIn className="w-5 h-5" aria-hidden="true" />
+                ) : (
+                  <LogOut className="w-5 h-5" aria-hidden="true" />
+                )}
               </IconButton>
             </div>
           </div>
         </div>
       </header>
 
-      <nav
-        className="border-b border-panel-edge bg-panel"
-        aria-label={t("Dashboard sections")}
-      >
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 flex gap-1">
-          <button
-            type="button"
-            onClick={() => setActiveSection("custodial")}
-            aria-current={activeSection === "custodial" ? "page" : undefined}
-            className={sectionTabClass("custodial")}
-          >
-            {t("Custodial")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveSection("spark")}
-            aria-current={activeSection === "spark" ? "page" : undefined}
-            className={sectionTabClass("spark")}
-          >
-            {t("Self-custody")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveSection("requests")}
-            aria-current={activeSection === "requests" ? "page" : undefined}
-            className={sectionTabClass("requests")}
-          >
-            {t("Requests")}
-          </button>
-        </div>
-      </nav>
+      {!isSparkOnly && (
+        <nav
+          className="border-b border-panel-edge bg-panel"
+          aria-label={t("Dashboard sections")}
+        >
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 flex gap-1">
+            <button
+              type="button"
+              onClick={() => setActiveSection("custodial")}
+              aria-current={activeSection === "custodial" ? "page" : undefined}
+              className={sectionTabClass("custodial")}
+            >
+              {t("Custodial")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection("spark")}
+              aria-current={activeSection === "spark" ? "page" : undefined}
+              className={sectionTabClass("spark")}
+            >
+              {t("Self-custody")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection("requests")}
+              aria-current={activeSection === "requests" ? "page" : undefined}
+              className={sectionTabClass("requests")}
+            >
+              {t("Requests")}
+            </button>
+          </div>
+        </nav>
+      )}
 
       <main className="flex-grow max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {error && activeSection === "custodial" && (

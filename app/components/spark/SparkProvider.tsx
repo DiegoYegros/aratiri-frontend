@@ -17,14 +17,6 @@ import {
   type PropsWithChildren,
 } from "react";
 import {
-  forgetSparkWallet,
-  getSparkWallet,
-  registerSparkWallet,
-  setSparkBackupVerified,
-  setSparkPrivacy,
-  type SparkWallet as SparkWalletMeta,
-} from "../../lib/api";
-import {
   SPARK_ACCOUNT_INDEX,
   SPARK_CONFIG,
   SPARK_NETWORK,
@@ -33,9 +25,17 @@ import {
   describeSparkError,
   isCoopExitTerminal,
   isLightningSendTerminal,
+  SPARK_ALREADY_LINKED_MESSAGE,
   toTransferRows,
   type SparkTransferRow,
 } from "../../lib/spark/mapping";
+import {
+  clearSparkWallet,
+  loadSparkWallet,
+  saveSparkWallet,
+  updateSparkWallet,
+  type SparkWalletMeta,
+} from "../../lib/spark/storage";
 
 export type { SparkTransferRow, SparkTransferKind } from "../../lib/spark/mapping";
 
@@ -58,13 +58,13 @@ export interface SparkContextValue {
   balance: SparkBalance | null;
   transactions: SparkTransferRow[] | null;
   refresh: () => Promise<void>;
-  /** Generate a fresh mnemonic + register backend metadata. Returns the phrase. */
+  /** Generate a fresh mnemonic + save local metadata. Returns the phrase. */
   createNew: () => Promise<string>;
-  /** Restore an existing wallet from a mnemonic + register backend metadata. */
+  /** Restore an existing wallet from a mnemonic + save local metadata. */
   restore: (mnemonic: string) => Promise<void>;
-  /** Derive the spark address for a phrase WITHOUT registering (restore confirm step). */
+  /** Derive the spark address for a phrase WITHOUT saving (restore confirm step). */
   deriveSparkAddress: (mnemonic: string) => Promise<string>;
-  /** Unlock the registered wallet; rejects on a phrase that doesn't match metadata. */
+  /** Unlock the saved wallet; rejects on a phrase that doesn't match metadata. */
   unlock: (mnemonic: string) => Promise<void>;
   lock: () => Promise<void>;
   setBackupVerified: (verified: boolean) => Promise<void>;
@@ -226,22 +226,21 @@ export const SparkProvider = ({ children }: PropsWithChildren) => {
     }
   }, []);
 
-  const registerWallet = useCallback(
-    async (w: SparkWalletInstance) => {
-      const address = await w.getSparkAddress();
-      const identityPublicKey = await w.getIdentityPublicKey();
-      const createdMeta = await registerSparkWallet({
-        identity_public_key: identityPublicKey,
-        spark_address: address,
-        network: SPARK_NETWORK,
-        account_index: SPARK_ACCOUNT_INDEX,
-      });
-      metaRef.current = createdMeta;
-      setMeta(createdMeta);
-      return createdMeta;
-    },
-    []
-  );
+  const registerWallet = useCallback(async (w: SparkWalletInstance) => {
+    const address = await w.getSparkAddress();
+    const identityPublicKey = await w.getIdentityPublicKey();
+    const createdMeta = saveSparkWallet({
+      identity_public_key: identityPublicKey,
+      spark_address: address,
+      network: SPARK_NETWORK,
+      account_index: SPARK_ACCOUNT_INDEX,
+      backup_verified: false,
+      privacy_enabled: false,
+    });
+    metaRef.current = createdMeta;
+    setMeta(createdMeta);
+    return createdMeta;
+  }, []);
 
   const adoptWallet = useCallback(
     (w: SparkWalletInstance) => {
@@ -258,52 +257,80 @@ export const SparkProvider = ({ children }: PropsWithChildren) => {
 
   const createNew = useCallback(async (): Promise<string> => {
     clearError();
+    if (metaRef.current) {
+      setError(SPARK_ALREADY_LINKED_MESSAGE);
+      throw new Error(SPARK_ALREADY_LINKED_MESSAGE);
+    }
+    let w: SparkWalletInstance | null = null;
+    let adopted = false;
     try {
-      const { wallet: w, mnemonic: generated } =
+      const { wallet, mnemonic: generated } =
         await SparkWallet.getOrCreateWallet({
           accountNumber: SPARK_ACCOUNT_INDEX,
           options: SPARK_CONFIG,
           forceReinit: true,
         });
+      w = wallet;
       await registerWallet(w);
       const phrase = generated as string;
       setMnemonic(phrase);
       adoptWallet(w);
+      adopted = true;
       return phrase;
     } catch (err) {
-      setError(
-        describeSparkError(
-          err,
-          "Failed to create wallet",
-          "Failed to create wallet: your device clock looks wrong. Check that the time and timezone are correct, then try again."
-        )
+      if (w && !adopted) {
+        try {
+          await w.cleanup();
+        } catch {
+          // best effort — do not leave an orphan SDK wallet
+        }
+      }
+      const message = describeSparkError(
+        err,
+        "Failed to create wallet",
+        "Failed to create wallet: your device clock looks wrong. Check that the time and timezone are correct, then try again."
       );
-      throw err;
+      setError(message);
+      throw new Error(message);
     }
   }, [adoptWallet, clearError, registerWallet, setError]);
 
   const restore = useCallback(
     async (phrase: string) => {
       clearError();
+      if (metaRef.current) {
+        setError(SPARK_ALREADY_LINKED_MESSAGE);
+        throw new Error(SPARK_ALREADY_LINKED_MESSAGE);
+      }
+      let w: SparkWalletInstance | null = null;
+      let adopted = false;
       try {
-        const { wallet: w } = await SparkWallet.getOrCreateWallet({
+        const { wallet } = await SparkWallet.getOrCreateWallet({
           mnemonicOrSeed: phrase,
           accountNumber: SPARK_ACCOUNT_INDEX,
           options: SPARK_CONFIG,
           forceReinit: true,
         });
+        w = wallet;
         await registerWallet(w);
         setMnemonic(phrase);
         adoptWallet(w);
+        adopted = true;
       } catch (err) {
-        setError(
-          describeSparkError(
-            err,
-            "Failed to restore wallet",
-            "Failed to restore wallet: your device clock looks wrong. Check that the time and timezone are correct, then try again."
-          )
+        if (w && !adopted) {
+          try {
+            await w.cleanup();
+          } catch {
+            // best effort — do not leave an orphan SDK wallet
+          }
+        }
+        const message = describeSparkError(
+          err,
+          "Failed to restore wallet",
+          "Failed to restore wallet: your device clock looks wrong. Check that the time and timezone are correct, then try again."
         );
-        throw err;
+        setError(message);
+        throw new Error(message);
       }
     },
     [adoptWallet, clearError, registerWallet, setError]
@@ -382,12 +409,17 @@ export const SparkProvider = ({ children }: PropsWithChildren) => {
     walletRef.current = null;
     setWallet(null);
     setMnemonic(null);
-    setStatus("locked");
-    void refresh();
+    // Keep localStorage meta; only clear in-memory secrets.
+    if (metaRef.current) {
+      setStatus("locked");
+      void refresh();
+    } else {
+      setStatus("not-created");
+    }
   }, [refresh]);
 
   const setBackupVerified = useCallback(async (verified: boolean) => {
-    const updated = await setSparkBackupVerified(verified);
+    const updated = updateSparkWallet({ backup_verified: verified });
     metaRef.current = updated;
     setMeta(updated);
   }, []);
@@ -398,7 +430,7 @@ export const SparkProvider = ({ children }: PropsWithChildren) => {
       if (current) {
         await current.setPrivacyEnabled(enabled);
       }
-      const updated = await setSparkPrivacy(enabled);
+      const updated = updateSparkWallet({ privacy_enabled: enabled });
       metaRef.current = updated;
       setMeta(updated);
       void refresh();
@@ -424,7 +456,7 @@ export const SparkProvider = ({ children }: PropsWithChildren) => {
         // proceed with metadata removal regardless
       }
     }
-    await forgetSparkWallet();
+    clearSparkWallet();
     walletRef.current = null;
     readonlyRef.current = null;
     setWallet(null);
@@ -478,35 +510,36 @@ export const SparkProvider = ({ children }: PropsWithChildren) => {
   );
 
   useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const stored = await getSparkWallet();
-        if (cancelled) return;
-        if (
-          stored &&
-          stored.identity_public_key?.trim() &&
-          stored.spark_address?.trim()
-        ) {
-          metaRef.current = stored;
-          setMeta(stored);
-          buildReadonly();
-          setStatus("locked");
-          void refresh();
-        } else {
-          setStatus("not-created");
-        }
-      } catch (err: any) {
-        if (cancelled) return;
-        setError(err?.message ?? "Failed to load Spark wallet");
+    try {
+      const stored = loadSparkWallet();
+      if (
+        stored &&
+        stored.identity_public_key?.trim() &&
+        stored.spark_address?.trim()
+      ) {
+        metaRef.current = stored;
+        setMeta(stored);
+        buildReadonly();
+        setStatus("locked");
+        void refresh();
+      } else {
         setStatus("not-created");
       }
-    };
-    void load();
-    return () => {
-      cancelled = true;
-    };
+    } catch (err: any) {
+      setError(err?.message ?? "Failed to load Spark wallet");
+      setStatus("not-created");
+    }
   }, [buildReadonly, refresh, setError]);
+
+  // Custodial force-logout must clear in-memory mnemonic/wallet without wiping
+  // device meta — SparkProvider now stays mounted across auth transitions.
+  useEffect(() => {
+    const onForceLogout = () => {
+      void lock();
+    };
+    window.addEventListener("force-logout", onForceLogout);
+    return () => window.removeEventListener("force-logout", onForceLogout);
+  }, [lock]);
 
   const value = useMemo<SparkContextValue>(
     () => ({

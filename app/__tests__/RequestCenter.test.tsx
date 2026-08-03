@@ -28,6 +28,7 @@ vi.mock("@/app/lib/api", async () => {
     ...actual,
     API_BASE_URL: "https://example.test/v1",
     apiCall: (...args: unknown[]) => apiCall(...args),
+    publicApiGet: (...args: unknown[]) => apiCall(...args),
   };
 });
 

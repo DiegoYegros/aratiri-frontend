@@ -2,15 +2,15 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { useBtcPrice } from "@/app/hooks/useBtcPrice";
 
-const apiCall = vi.fn();
+const publicApiGet = vi.fn();
 
 vi.mock("@/app/lib/api", () => ({
-  apiCall: (...args: unknown[]) => apiCall(...args),
+  publicApiGet: (...args: unknown[]) => publicApiGet(...args),
 }));
 
 describe("useBtcPrice", () => {
   beforeEach(() => {
-    apiCall.mockReset();
+    publicApiGet.mockReset();
     vi.useFakeTimers({ shouldAdvanceTime: true });
   });
 
@@ -19,7 +19,7 @@ describe("useBtcPrice", () => {
   });
 
   it("loads the current price for the selected currency", async () => {
-    apiCall.mockResolvedValue({
+    publicApiGet.mockResolvedValue({
       currency: "usd",
       price: 65000.5,
       updatedAt: "2026-07-29T12:00:00Z",
@@ -29,7 +29,7 @@ describe("useBtcPrice", () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(apiCall).toHaveBeenCalledWith(
+    expect(publicApiGet).toHaveBeenCalledWith(
       "/general-data/btc-price/current?currency=usd"
     );
     expect(result.current.price).toEqual({
@@ -41,7 +41,7 @@ describe("useBtcPrice", () => {
   });
 
   it("refetches when currency changes", async () => {
-    apiCall
+    publicApiGet
       .mockResolvedValueOnce({
         currency: "usd",
         price: 1,
@@ -63,14 +63,14 @@ describe("useBtcPrice", () => {
     rerender({ currency: "EUR" });
 
     await waitFor(() => expect(result.current.price?.currency).toBe("eur"));
-    expect(apiCall).toHaveBeenCalledWith(
+    expect(publicApiGet).toHaveBeenCalledWith(
       "/general-data/btc-price/current?currency=eur"
     );
     expect(result.current.price?.price).toBe(2);
   });
 
   it("hides price state on error without throwing", async () => {
-    apiCall.mockRejectedValue(new Error("Service Unavailable"));
+    publicApiGet.mockRejectedValue(new Error("Service Unavailable"));
 
     const { result } = renderHook(() => useBtcPrice("usd"));
 
@@ -81,7 +81,7 @@ describe("useBtcPrice", () => {
   });
 
   it("exposes refresh for Zap-driven parallel refresh", async () => {
-    apiCall
+    publicApiGet
       .mockResolvedValueOnce({
         currency: "usd",
         price: 10,
@@ -101,6 +101,6 @@ describe("useBtcPrice", () => {
     });
 
     await waitFor(() => expect(result.current.price?.price).toBe(11));
-    expect(apiCall).toHaveBeenCalledTimes(2);
+    expect(publicApiGet).toHaveBeenCalledTimes(2);
   });
 });

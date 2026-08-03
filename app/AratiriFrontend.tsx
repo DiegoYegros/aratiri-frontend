@@ -27,6 +27,7 @@ const decodeJwt = (token: string): { exp: number } | null => {
 export default function AratiriFrontend() {
   const [, setToken] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [guestSpark, setGuestSpark] = useState(false);
   const [loginMessage, setLoginMessage] = useState<string | null>(null);
   const [showRegister, setShowRegister] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -38,6 +39,7 @@ export default function AratiriFrontend() {
       if (decodedToken && decodedToken.exp * 1000 > Date.now()) {
         setToken(storedToken);
         setIsAuthenticated(true);
+        setGuestSpark(false);
       } else {
         localStorage.removeItem("aratiri_accessToken");
         localStorage.removeItem("aratiri_refreshToken");
@@ -54,6 +56,8 @@ export default function AratiriFrontend() {
     const handleForceLogout = () => {
       setToken(null);
       setIsAuthenticated(false);
+      // Keep guest Spark shell if already there; otherwise return to login.
+      // Spark localStorage is intentionally not cleared.
     };
 
     window.addEventListener("force-logout", handleForceLogout);
@@ -63,40 +67,45 @@ export default function AratiriFrontend() {
     };
   }, []);
 
-  if (isAuthenticated) {
-    return (
-      <SparkProvider>
+  return (
+    <SparkProvider>
+      {isAuthenticated ? (
         <Dashboard
+          accessMode="full"
+          setToken={setToken}
+          setIsAuthenticated={(auth: boolean) => {
+            setIsAuthenticated(auth);
+            if (!auth) setGuestSpark(false);
+          }}
+        />
+      ) : guestSpark ? (
+        <Dashboard
+          accessMode="spark"
+          setToken={setToken}
+          setIsAuthenticated={(auth: boolean) => {
+            setIsAuthenticated(auth);
+            if (auth) setGuestSpark(false);
+          }}
+          onSignIn={() => setGuestSpark(false)}
+        />
+      ) : showRegister ? (
+        <RegisterScreen
           setToken={setToken}
           setIsAuthenticated={setIsAuthenticated}
+          setShowRegister={setShowRegister}
         />
-      </SparkProvider>
-    );
-  }
-
-  if (showRegister) {
-    return (
-      <RegisterScreen
-        setToken={setToken}
-        setIsAuthenticated={setIsAuthenticated}
-        setShowRegister={setShowRegister}
-      />
-    );
-  }
-
-  if (showForgotPassword) {
-    return (
-      <ForgotPasswordScreen setShowForgotPassword={setShowForgotPassword} />
-    );
-  }
-
-  return (
-    <LoginScreen
-      setToken={setToken}
-      setIsAuthenticated={setIsAuthenticated}
-      initialMessage={loginMessage}
-      setShowRegister={setShowRegister}
-      setShowForgotPassword={setShowForgotPassword}
-    />
+      ) : showForgotPassword ? (
+        <ForgotPasswordScreen setShowForgotPassword={setShowForgotPassword} />
+      ) : (
+        <LoginScreen
+          setToken={setToken}
+          setIsAuthenticated={setIsAuthenticated}
+          initialMessage={loginMessage}
+          setShowRegister={setShowRegister}
+          setShowForgotPassword={setShowForgotPassword}
+          onEnterSpark={() => setGuestSpark(true)}
+        />
+      )}
+    </SparkProvider>
   );
 }

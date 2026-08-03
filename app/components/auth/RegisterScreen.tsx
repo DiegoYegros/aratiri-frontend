@@ -73,24 +73,24 @@ export const RegisterScreen = ({
 
   return (
     <AuthShell
-      subtitle={
+      variant="form"
+      subtitle={t("Bitcoin Lightning Wallet")}
+      railTitle={
         isVerification
           ? t("Enter verification code")
           : t("Create a new account")
       }
       topLeft={
-        <div className="absolute top-3 left-3 z-10">
-          <IconButton
-            label={t("Back")}
-            onClick={() =>
-              isVerification
-                ? setIsVerification(false)
-                : setShowRegister(false)
-            }
-          >
-            <ArrowLeft className="w-5 h-5" aria-hidden="true" />
-          </IconButton>
-        </div>
+        <IconButton
+          label={t("Back")}
+          onClick={() =>
+            isVerification
+              ? setIsVerification(false)
+              : setShowRegister(false)
+          }
+        >
+          <ArrowLeft className="w-5 h-5" aria-hidden="true" />
+        </IconButton>
       }
     >
       {error && <Alert variant="danger">{error}</Alert>}

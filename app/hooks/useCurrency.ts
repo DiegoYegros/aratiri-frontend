@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { apiCall } from "../lib/api";
+import { publicApiGet } from "../lib/api";
 
 export const useCurrency = () => {
   const [selectedCurrency, setSelectedCurrencyState] = useState<string>("usd");
@@ -9,7 +9,9 @@ export const useCurrency = () => {
   useEffect(() => {
     const initializeCurrency = async () => {
       try {
-        const currencies = await apiCall("/general-data/currencies");
+        const currencies = await publicApiGet<string[]>(
+          "/general-data/currencies"
+        );
         if (currencies && Array.isArray(currencies)) {
           setAvailableCurrencies(currencies);
         }

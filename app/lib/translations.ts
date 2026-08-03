@@ -207,6 +207,8 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "Open in Wallet": "Open in Wallet",
     "A 10,000-sat bond is reserved during the withdrawal and returned when it settles.":
       "A 10,000-sat bond is reserved during the withdrawal and returned when it settles.",
+    "A Spark wallet is already set up on this device.":
+      "A Spark wallet is already set up on this device.",
     "A fresh address for each deposit — best for privacy. Use the same address only once.":
       "A fresh address for each deposit — best for privacy. Use the same address only once.",
     "A self-custody Bitcoin wallet. You hold your keys — Aratiri can't recover them, and can't take them.":
@@ -237,9 +239,15 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "Could not generate a deposit address.":
       "Could not generate a deposit address.",
     "Could not generate an invoice.": "Could not generate an invoice.",
+    "Could not save backup verification. Try again.":
+      "Could not save backup verification. Try again.",
+    "Continue backup": "Continue backup",
+    "Continue writing down your backup": "Continue writing down your backup",
     "Create a Spark wallet": "Create a Spark wallet",
+    "Create one": "Create one",
     Custodial: "Custodial",
     Deposit: "Deposit",
+    "No account?": "No account?",
     "Deduct fee from withdrawal amount (recipient gets amount minus fee).":
       "Deduct fee from withdrawal amount (recipient gets amount minus fee).",
     "Deposit Bitcoin": "Deposit Bitcoin",
@@ -307,6 +315,7 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "Restoring...": "Restoring...",
     Reusable: "Reusable",
     "Self-custody": "Self-custody",
+    "Self-custody with Spark": "Self-custody with Spark",
     "Self-custody wallet": "Self-custody wallet",
     "Send {amount} sats": "Send {amount} sats",
     "Send to a Spark wallet — 0 fee, instant.":
@@ -326,6 +335,8 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
       "This fee quote has expired. Go back and re-estimate the fee.",
     "This fee quote has expired. Re-estimate to get fresh fees.":
       "This fee quote has expired. Re-estimate to get fresh fees.",
+    "This recovery phrase is already linked on this device.":
+      "This recovery phrase is already linked on this device.",
     "This is the wallet you're restoring:":
       "This is the wallet you're restoring:",
     "This wallet hides its balance from third parties. Enter your backup phrase to unlock it.":
@@ -340,6 +351,8 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
       "Unlock your wallet to generate a deposit address.",
     "Unlock your wallet to generate an invoice.":
       "Unlock your wallet to generate an invoice.",
+    "Use Spark without an Aratiri account":
+      "Use Spark without an Aratiri account",
     "Verify backup phrase": "Verify backup phrase",
     "Wallet locked. The mnemonic was cleared from memory.":
       "Wallet locked. The mnemonic was cleared from memory.",
@@ -573,6 +586,8 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "Open in Wallet": "Abrir en billetera",
     "A 10,000-sat bond is reserved during the withdrawal and returned when it settles.":
       "Durante el retiro se reserva un depósito de garantía de 10.000 sats que se devuelve al completarse.",
+    "A Spark wallet is already set up on this device.":
+      "Ya hay una billetera Spark configurada en este dispositivo.",
     "A fresh address for each deposit — best for privacy. Use the same address only once.":
       "Una dirección nueva para cada depósito, lo mejor para tu privacidad. Usa la misma dirección solo una vez.",
     "A self-custody Bitcoin wallet. You hold your keys — Aratiri can't recover them, and can't take them.":
@@ -603,9 +618,16 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "Could not generate a deposit address.":
       "No se pudo generar una dirección de depósito.",
     "Could not generate an invoice.": "No se pudo generar una factura.",
+    "Could not save backup verification. Try again.":
+      "No se pudo guardar la verificación del respaldo. Inténtalo de nuevo.",
+    "Continue backup": "Continuar respaldo",
+    "Continue writing down your backup":
+      "Continúa escribiendo tu respaldo",
     "Create a Spark wallet": "Crear una billetera Spark",
+    "Create one": "Crear una",
     Custodial: "Custodiada",
     Deposit: "Depósito",
+    "No account?": "¿Sin cuenta?",
     "Deduct fee from withdrawal amount (recipient gets amount minus fee).":
       "Descontar la comisión del monto del retiro (el destinatario recibe el monto menos la comisión).",
     "Deposit Bitcoin": "Depositar Bitcoin",
@@ -674,6 +696,7 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "Restoring...": "Restaurando...",
     Reusable: "Reutilizable",
     "Self-custody": "Autocustodia",
+    "Self-custody with Spark": "Autocustodia con Spark",
     "Self-custody wallet": "Billetera de autocustodia",
     "Send {amount} sats": "Enviar {amount} sats",
     "Send to a Spark wallet — 0 fee, instant.":
@@ -693,6 +716,8 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
       "Esta cotización de comisión ha vencido. Vuelve atrás y vuelve a estimar la comisión.",
     "This fee quote has expired. Re-estimate to get fresh fees.":
       "Esta cotización de comisión ha vencido. Vuelve a estimarla para obtener comisiones actualizadas.",
+    "This recovery phrase is already linked on this device.":
+      "Esta frase de recuperación ya está vinculada en este dispositivo.",
     "This is the wallet you're restoring:":
       "Esta es la billetera que vas a restaurar:",
     "This wallet hides its balance from third parties. Enter your backup phrase to unlock it.":
@@ -707,6 +732,8 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
       "Desbloquea tu billetera para generar una dirección de depósito.",
     "Unlock your wallet to generate an invoice.":
       "Desbloquea tu billetera para generar una factura.",
+    "Use Spark without an Aratiri account":
+      "Usa Spark sin una cuenta de Aratiri",
     "Verify backup phrase": "Verificar frase de respaldo",
     "Wallet locked. The mnemonic was cleared from memory.":
       "Billetera bloqueada. La frase mnemotécnica se eliminó de la memoria.",
