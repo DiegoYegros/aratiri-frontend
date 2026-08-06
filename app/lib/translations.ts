@@ -123,6 +123,8 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     Balance: "Balance",
     "Show balance": "Show balance",
     "Hide balance": "Hide balance",
+    "Show amounts": "Show amounts",
+    "Hide amounts": "Hide amounts",
     "Change display unit. Current unit: {unit}":
       "Change display unit. Current unit: {unit}",
     "1 BTC ≈ {price}": "1 BTC ≈ {price}",
@@ -502,6 +504,8 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     Balance: "Saldo",
     "Show balance": "Mostrar saldo",
     "Hide balance": "Ocultar saldo",
+    "Show amounts": "Mostrar montos",
+    "Hide amounts": "Ocultar montos",
     "Change display unit. Current unit: {unit}":
       "Cambiar unidad de visualización. Unidad actual: {unit}",
     "1 BTC ≈ {price}": "1 BTC ≈ {price}",
