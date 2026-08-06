@@ -206,7 +206,7 @@ describe("Request Center authenticated flows", () => {
 
     expect(screen.getByText("2,500 sats")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Hide balance" }));
+    await user.click(screen.getByRole("button", { name: "Hide amounts" }));
     expect(screen.getByText("•••••••")).toBeInTheDocument();
     expect(screen.queryByText("2,500 sats")).not.toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem("balanceVisible")!)).toBe(false);
@@ -216,9 +216,82 @@ describe("Request Center authenticated flows", () => {
       "page"
     );
 
-    await user.click(screen.getByRole("button", { name: "Show balance" }));
+    await user.click(screen.getByRole("button", { name: "Show amounts" }));
     expect(screen.getByText("2,500 sats")).toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem("balanceVisible")!)).toBe(true);
+  });
+
+  it("uses Hide/Show amounts on Requests and keeps Hide/Show balance on Custodial", async () => {
+    const user = userEvent.setup();
+    await goToRequests(user);
+
+    expect(screen.getByRole("button", { name: "Hide amounts" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Hide balance" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Show balance" })
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Custodial" }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Hide balance" })
+      ).toBeInTheDocument()
+    );
+    expect(
+      screen.queryByRole("button", { name: "Hide amounts" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Show amounts" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("masks amounts in the detail modal when visibility is hidden", async () => {
+    localStorage.setItem("balanceVisible", "false");
+    const user = userEvent.setup();
+    await goToRequests(user);
+
+    await user.click(
+      screen.getByRole("button", { name: /View request for •••••••/i })
+    );
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("•••••••")).toBeInTheDocument();
+    expect(within(dialog).queryByText("2,500 sats")).not.toBeInTheDocument();
+  });
+
+  it("uses Spanish Hide/Show amounts copy on Requests", async () => {
+    localStorage.setItem("preferredLanguage", "es");
+    const user = userEvent.setup();
+    render(
+      <LanguageProvider>
+        <Dashboard setIsAuthenticated={vi.fn()} setToken={vi.fn()} />
+      </LanguageProvider>
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Solicitudes" })
+      ).toBeInTheDocument()
+    );
+    await user.click(screen.getByRole("button", { name: "Solicitudes" }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: "Solicitudes" })
+      ).toBeInTheDocument()
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Ocultar montos" })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Ocultar saldo" })
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Ocultar montos" }));
+    expect(
+      screen.getByRole("button", { name: "Mostrar montos" })
+    ).toBeInTheDocument();
   });
 
   it("creates a request with snake_case body and stable Idempotency-Key across rapid clicks", async () => {
@@ -402,6 +475,14 @@ describe("Request Center authenticated flows", () => {
     expect(
       screen.getByText("Create a request to share a Lightning invoice link.")
     ).toBeInTheDocument();
+    const emptyFrame = screen
+      .getByText("No payment requests yet.")
+      .closest("[role='status']");
+    expect(emptyFrame).toHaveClass(
+      "border-dashed",
+      "border-panel-edge",
+      "rounded-lg"
+    );
   });
 
   it("preserves already-loaded cursor pages on WS/Zap list refresh", async () => {
@@ -763,6 +844,143 @@ describe("Request Center authenticated flows", () => {
     });
 
     expect(sockets.length).toBe(1);
+  });
+});
+
+describe("RequestCenter Quiet Edge list language", () => {
+  beforeEach(() => {
+    apiCall.mockReset();
+  });
+
+  it("renders dense instrument rows with scannable amount, memo, status, and date", async () => {
+    const request = sampleRequest();
+    apiCall.mockImplementation(async (endpoint: string) => {
+      if (String(endpoint).startsWith("/payment-requests?")) {
+        return {
+          payment_requests: [request],
+          next_cursor: null,
+          has_more: false,
+        };
+      }
+      if (String(endpoint) === "/payment-requests/req-1") {
+        return request;
+      }
+      return {};
+    });
+
+    const user = userEvent.setup();
+    render(
+      <LanguageProvider>
+        <RequestCenter
+          balanceVisible
+          onToggleBalanceVisibility={vi.fn()}
+          registerRefresh={vi.fn()}
+        />
+      </LanguageProvider>
+    );
+
+    const list = await screen.findByRole("list", { name: "Payment requests" });
+    expect(list).toHaveClass("space-y-2");
+
+    const row = within(list).getByRole("button", {
+      name: /View request for 2,500 sats/i,
+    });
+    expect(row).toHaveClass("min-h-11");
+    expect(within(row).getByText("2,500 sats")).toBeInTheDocument();
+    expect(within(row).getByText("Coffee")).toBeInTheDocument();
+    const status = within(row).getByText("Pending");
+    expect(status).toHaveClass("text-sm", "text-pending");
+    expect(status).not.toHaveClass("border", "rounded-md");
+    // Relative/absolute date under memo (TZ-stable: presence via created_at formatting path).
+    expect(within(row).getByText("Coffee").nextElementSibling).not.toBeNull();
+
+    await user.click(row);
+    expect(
+      await screen.findByRole("heading", { name: "Request Details" })
+    ).toBeInTheDocument();
+  });
+
+  it("shows quiet status text without chip roles", async () => {
+    apiCall.mockResolvedValue({
+      payment_requests: [
+        sampleRequest({ public_id: "req-open", status: "OPEN", memo: "Open one" }),
+        sampleRequest({
+          public_id: "req-paid",
+          status: "PAID",
+          memo: "Paid one",
+          paid_at: "2026-07-01T13:00:00Z",
+          payment_request: null,
+        }),
+        sampleRequest({
+          public_id: "req-cancelled",
+          status: "CANCELLED",
+          memo: "Cancelled one",
+          cancelled_at: "2026-07-01T13:00:00Z",
+          payment_request: null,
+        }),
+        sampleRequest({
+          public_id: "req-expired",
+          status: "EXPIRED",
+          memo: "Expired one",
+          payment_request: null,
+        }),
+      ],
+      next_cursor: null,
+      has_more: false,
+    });
+
+    render(
+      <LanguageProvider>
+        <RequestCenter
+          balanceVisible
+          onToggleBalanceVisibility={vi.fn()}
+          registerRefresh={vi.fn()}
+        />
+      </LanguageProvider>
+    );
+
+    const list = await screen.findByRole("list", { name: "Payment requests" });
+    const pending = within(list).getByText("Pending");
+    const paid = within(list).getByText("Paid");
+    const cancelled = within(list).getByText("Cancelled");
+    const expired = within(list).getByText("Expired");
+
+    expect(pending).toHaveClass("text-sm", "text-pending");
+    expect(paid).toHaveClass("text-sm", "text-success");
+    expect(cancelled).toHaveClass("text-sm", "text-danger");
+    expect(expired).toHaveClass("text-sm", "text-muted");
+    for (const node of [pending, paid, cancelled, expired]) {
+      expect(node).not.toHaveClass("border", "rounded-md");
+    }
+
+    // Status labels are plain text in the row; only row openers are buttons.
+    expect(within(list).queryByRole("status")).not.toBeInTheDocument();
+    expect(within(list).getAllByRole("button")).toHaveLength(4);
+  });
+
+  it("keeps row touch targets at min-h-11 when amounts are masked", async () => {
+    apiCall.mockResolvedValue({
+      payment_requests: [sampleRequest()],
+      next_cursor: null,
+      has_more: false,
+    });
+
+    render(
+      <LanguageProvider>
+        <RequestCenter
+          balanceVisible={false}
+          onToggleBalanceVisibility={vi.fn()}
+          registerRefresh={vi.fn()}
+        />
+      </LanguageProvider>
+    );
+
+    const row = await screen.findByRole("button", {
+      name: /View request for •••••••/i,
+    });
+    expect(row).toHaveClass("min-h-11");
+    expect(within(row).getByText("•••••••")).toBeInTheDocument();
+    expect(within(row).getByText("Pending")).toBeInTheDocument();
   });
 });
 

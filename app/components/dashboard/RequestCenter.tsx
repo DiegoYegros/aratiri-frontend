@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, EyeOff, Plus } from "lucide-react";
+import { Eye, EyeOff, Plus, Zap } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiCall, PaymentRequest, PaymentRequestListResponse } from "../../lib/api";
 import {
@@ -45,15 +45,29 @@ const mergeUniqueByPublicId = (
   return merged;
 };
 
-const statusBadgeClass: Record<PaymentRequestStatus | "unknown", string> = {
-  provisioning: "bg-accent-subtle text-pending border-accent/30",
-  open: "bg-accent-subtle text-pending border-accent/30",
-  cancel_pending: "bg-accent-subtle text-pending border-accent/30",
-  paid: "bg-success-bg text-success border-success/30",
-  expired: "bg-panel-elevated text-muted border-panel-edge",
-  cancelled: "bg-danger-bg text-danger border-danger/30",
-  failed: "bg-danger-bg text-danger border-danger/30",
-  unknown: "bg-panel-elevated text-muted border-panel-edge",
+/** Quiet right-rail status color (list only — no chip/badge chrome). */
+const statusTextClass: Record<PaymentRequestStatus | "unknown", string> = {
+  provisioning: "text-pending",
+  open: "text-pending",
+  cancel_pending: "text-pending",
+  paid: "text-success",
+  expired: "text-muted",
+  cancelled: "text-danger",
+  failed: "text-danger",
+  unknown: "text-muted",
+};
+
+const amountTextClass = (status: PaymentRequestStatus | "unknown"): string => {
+  switch (status) {
+    case "paid":
+      return "text-credit";
+    case "failed":
+    case "expired":
+    case "cancelled":
+      return "text-muted";
+    default:
+      return "";
+  }
 };
 
 interface RequestCenterProps {
@@ -437,7 +451,7 @@ export const RequestCenter = ({
         </h2>
         <div className="flex items-center gap-2">
           <IconButton
-            label={balanceVisible ? t("Hide balance") : t("Show balance")}
+            label={balanceVisible ? t("Hide amounts") : t("Show amounts")}
             onClick={onToggleBalanceVisibility}
           >
             {balanceVisible ? (
@@ -476,7 +490,7 @@ export const RequestCenter = ({
 
       {!loading && !error && requests.length === 0 && (
         <div
-          className="py-16 text-center text-muted border border-dashed border-panel-edge rounded-xl"
+          className="py-10 text-center text-muted border border-dashed border-panel-edge rounded-lg"
           role="status"
         >
           <p className="mb-2">{t("No payment requests yet.")}</p>
@@ -487,48 +501,63 @@ export const RequestCenter = ({
       )}
 
       {!loading && requests.length > 0 && (
-        <ul className="space-y-3" aria-label={t("Payment requests")}>
+        <ul className="space-y-2" aria-label={t("Payment requests")}>
           {requests.map((request) => {
             const status = getEffectivePaymentRequestStatus(request);
             const amountLabel = balanceVisible
               ? `${formatSats(request.amount_sats, locale)} sats`
               : "•••••••";
+            const amountClass = amountTextClass(status);
+            const statusLabel =
+              status === "unknown"
+                ? request.status
+                : t(paymentRequestStatusLabelKey[status]);
 
             return (
               <li key={request.public_id}>
                 <button
                   type="button"
                   onClick={() => setDetailId(request.public_id)}
-                  className="w-full text-left min-h-11 p-4 rounded-xl border border-panel-edge bg-panel hover:bg-panel-elevated transition touch-manipulation focus-visible:ring-2 focus-visible:ring-accent"
-                  aria-label={t("View request for {amount}", {
-                    amount: amountLabel,
-                  })}
+                  className="w-full text-left min-h-11 px-3 sm:px-4 py-3 rounded-lg border border-panel-edge bg-panel-elevated/60 hover:bg-panel-elevated transition touch-manipulation focus-visible:ring-2 focus-visible:ring-accent"
+                  aria-label={[
+                    t("View request for {amount}", {
+                      amount: amountLabel,
+                    }),
+                    request.memo || t("No description"),
+                    statusLabel,
+                  ].join(", ")}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-lg font-semibold font-amount tracking-tight">
-                        {amountLabel}
-                      </p>
-                      {request.memo ? (
-                        <p className="text-sm text-muted mt-1 truncate">
-                          {request.memo}
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                      <span
+                        className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-input border border-panel-edge shrink-0"
+                        aria-hidden="true"
+                      >
+                        <Zap className="w-4 h-4 text-accent" />
+                      </span>
+                      <div className="min-w-0">
+                        <p
+                          className={`font-amount font-medium truncate ${amountClass}`}
+                        >
+                          {status === "failed" && balanceVisible ? (
+                            <span className="line-through">{amountLabel}</span>
+                          ) : (
+                            amountLabel
+                          )}
                         </p>
-                      ) : (
-                        <p className="text-sm text-muted mt-1">
-                          {t("No description")}
+                        <p className="text-xs text-muted truncate">
+                          {request.memo || t("No description")}
                         </p>
-                      )}
-                      <p className="text-xs text-muted mt-2">
-                        {formatRelativeDate(request.created_at, language)}
-                      </p>
+                        <p className="text-xs text-muted">
+                          {formatRelativeDate(request.created_at, language)}
+                        </p>
+                      </div>
                     </div>
-                    <span
-                      className={`shrink-0 inline-flex items-center min-h-8 px-3 text-xs font-medium rounded-md border ${statusBadgeClass[status]}`}
+                    <p
+                      className={`shrink-0 text-sm ${statusTextClass[status]}`}
                     >
-                      {status === "unknown"
-                        ? request.status
-                        : t(paymentRequestStatusLabelKey[status])}
-                    </span>
+                      {statusLabel}
+                    </p>
                   </div>
                 </button>
               </li>
