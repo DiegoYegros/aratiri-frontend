@@ -6,12 +6,23 @@ import { LanguageProvider, useLanguage } from "@/app/LanguageProvider";
 
 const apiCall = vi.fn();
 const publicApiGet = vi.fn();
+let ticketSeq = 0;
 
-vi.mock("@/app/lib/api", () => ({
-  API_BASE_URL: "https://example.test/v1",
-  apiCall: (...args: unknown[]) => apiCall(...args),
-  publicApiGet: (...args: unknown[]) => publicApiGet(...args),
-}));
+vi.mock("@/app/lib/api", async () => {
+  const actual = await vi.importActual<typeof import("@/app/lib/api")>(
+    "@/app/lib/api"
+  );
+  return {
+    ...actual,
+    API_BASE_URL: "https://example.test/v1",
+    apiCall: (...args: unknown[]) => apiCall(...args),
+    publicApiGet: (...args: unknown[]) => publicApiGet(...args),
+    mintNotificationWsTicket: async () => {
+      ticketSeq += 1;
+      return apiCall("/notifications/ws-ticket", { method: "POST" });
+    },
+  };
+});
 
 const currencyStore = {
   selectedCurrency: "usd",
@@ -54,8 +65,10 @@ class MockWebSocket {
   onerror: ((ev: Event) => void) | null = null;
   close = vi.fn();
   url: string;
-  constructor(url: string) {
+  protocols: string | string[] | undefined;
+  constructor(url: string, protocols?: string | string[]) {
     this.url = url;
+    this.protocols = protocols;
     sockets.push(this);
     setTimeout(() => this.onopen?.(new Event("open")), 0);
   }
@@ -93,14 +106,22 @@ function CurrencyChanger() {
 describe("Dashboard payment WebSocket lifetime", () => {
   beforeEach(() => {
     sockets.length = 0;
+    ticketSeq = 0;
     currencyStore.selectedCurrency = "usd";
     currencyStore.listeners.clear();
     vi.stubGlobal("WebSocket", MockWebSocket as unknown as typeof WebSocket);
     localStorage.clear();
-    localStorage.setItem("aratiri_accessToken", "token");
+    localStorage.setItem("aratiri_accessToken", "access-jwt-secret");
     localStorage.setItem("balanceVisible", "true");
 
     apiCall.mockImplementation(async (endpoint: string) => {
+      if (endpoint === "/notifications/ws-ticket") {
+        return {
+          ticket: `ticket-${ticketSeq}`,
+          expiresInSeconds: 60,
+          expiresAt: "2026-08-06T22:05:00Z",
+        };
+      }
       if (endpoint === "/accounts/account") {
         return {
           id: "1",
@@ -146,6 +167,16 @@ describe("Dashboard payment WebSocket lifetime", () => {
 
     const firstSocket = sockets[0];
     expect(firstSocket.close).not.toHaveBeenCalled();
+    expect(firstSocket.url).not.toMatch(/token=/);
+    expect(firstSocket.url).not.toMatch(/ticket=/);
+    expect(firstSocket.url).not.toContain("access-jwt-secret");
+    expect(firstSocket.protocols).toEqual([
+      "aratiri.notifications.v1",
+      "ticket-1",
+    ]);
+    expect(apiCall).toHaveBeenCalledWith("/notifications/ws-ticket", {
+      method: "POST",
+    });
 
     await act(async () => {
       screen.getByTestId("change-currency").click();
@@ -186,5 +217,73 @@ describe("Dashboard payment WebSocket lifetime", () => {
 
     unmount();
     expect(firstSocket.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("mints a fresh ticket on unclean reconnect", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    render(
+      <LanguageProvider>
+        <Dashboard setIsAuthenticated={vi.fn()} setToken={vi.fn()} />
+      </LanguageProvider>
+    );
+
+    await waitFor(() => expect(sockets.length).toBe(1));
+    expect(sockets[0].protocols).toEqual([
+      "aratiri.notifications.v1",
+      "ticket-1",
+    ]);
+
+    act(() => {
+      sockets[0].onclose?.(
+        new CloseEvent("close", { wasClean: false, code: 1006 })
+      );
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+
+    await waitFor(() => expect(sockets.length).toBe(2));
+    expect(sockets[1].url).not.toMatch(/token=/);
+    expect(sockets[1].protocols).toEqual([
+      "aratiri.notifications.v1",
+      "ticket-2",
+    ]);
+    expect(
+      apiCall.mock.calls.filter(
+        (call) => call[0] === "/notifications/ws-ticket"
+      ).length
+    ).toBe(2);
+
+    vi.useRealTimers();
+  });
+
+  it("mints a fresh ticket after policy-violation close", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    render(
+      <LanguageProvider>
+        <Dashboard setIsAuthenticated={vi.fn()} setToken={vi.fn()} />
+      </LanguageProvider>
+    );
+
+    await waitFor(() => expect(sockets.length).toBe(1));
+
+    act(() => {
+      sockets[0].onclose?.(
+        new CloseEvent("close", { wasClean: true, code: 1008, reason: "invalid ticket" })
+      );
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+
+    await waitFor(() => expect(sockets.length).toBe(2));
+    expect(sockets[1].protocols).toEqual([
+      "aratiri.notifications.v1",
+      "ticket-2",
+    ]);
+
+    vi.useRealTimers();
   });
 });

@@ -102,6 +102,15 @@ export interface PaymentRequestListResponse {
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://aratiri.diegoyegros.com/v1";
 
+/** Fixed subprotocol for notification WebSocket handshake (never put tickets in the URL). */
+export const NOTIFICATIONS_WS_SUBPROTOCOL = "aratiri.notifications.v1";
+
+export interface NotificationWsTicket {
+  ticket: string;
+  expiresInSeconds: number;
+  expiresAt: string;
+}
+
 /** Derive backend root by removing a trailing `/v1` only. */
 export const getBackendRootUrl = (apiBaseUrl: string = API_BASE_URL): string =>
   apiBaseUrl.replace(/\/v1\/?$/, "");
@@ -259,3 +268,9 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
     throw error;
   }
 };
+
+/** Mint a short-lived single-use ticket for the notifications WebSocket. */
+export const mintNotificationWsTicket =
+  async (): Promise<NotificationWsTicket> => {
+    return apiCall("/notifications/ws-ticket", { method: "POST" });
+  };

@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNotifier } from "../../hooks/useNotifier";
-import { Account, API_BASE_URL, apiCall, Transaction } from "../../lib/api";
+import { Account, API_BASE_URL, apiCall, mintNotificationWsTicket, NOTIFICATIONS_WS_SUBPROTOCOL, Transaction } from "../../lib/api";
 import {
   formatBtc,
   formatFiat,
@@ -251,69 +251,82 @@ export const Dashboard = ({
 
   useEffect(() => {
     if (isSparkOnly) return;
-    const token = localStorage.getItem("aratiri_accessToken");
-    if (!token) return;
+    if (!localStorage.getItem("aratiri_accessToken")) return;
 
     let ws: WebSocket | null = null;
     let reconnectTimeout: ReturnType<typeof setTimeout> | undefined;
+    let cancelled = false;
 
-    const connectWebSocket = () => {
-      const wsUrl = `${API_BASE_URL.replace(
-        "http",
-        "ws"
-      )}/notifications/subscribe?token=${token}`;
-      ws = new WebSocket(wsUrl);
+    const connectWebSocket = async () => {
+      try {
+        const { ticket } = await mintNotificationWsTicket();
+        if (cancelled) return;
 
-      ws.onopen = () => {
-        if (reconnectTimeout) {
-          clearTimeout(reconnectTimeout);
-        }
-      };
+        const wsUrl = `${API_BASE_URL.replace(
+          "http",
+          "ws"
+        )}/notifications/subscribe`;
+        ws = new WebSocket(wsUrl, [NOTIFICATIONS_WS_SUBPROTOCOL, ticket]);
 
-      ws.onmessage = (event: MessageEvent) => {
-        try {
-          const message = JSON.parse(event.data);
-          const eventType = message.event;
-          const eventData = message.data;
-
-          if (eventType === "payment_received" && eventData) {
-            const amountSats = eventData.amountSats || 0;
-            const memo = eventData.memo || tRef.current("No description");
-
-            addNotificationRef.current(
-              tRef.current("Payment Received"),
-              `${amountSats.toLocaleString()} sats - ${memo}`,
-              "success"
-            );
-
-            void fetchAllDataRef.current();
-            void refreshBtcPriceRef.current();
-            void requestsRefreshRef.current?.();
-          } else if (eventType === "payment_sent") {
-            void fetchAllDataRef.current();
-            void refreshBtcPriceRef.current();
-            void requestsRefreshRef.current?.();
+        ws.onopen = () => {
+          if (reconnectTimeout) {
+            clearTimeout(reconnectTimeout);
           }
-        } catch {
-          // Ignore malformed notification payloads
-        }
-      };
+        };
 
-      ws.onclose = (event: CloseEvent) => {
-        if (!event.wasClean) {
-          reconnectTimeout = setTimeout(() => {
-            connectWebSocket();
-          }, 5000);
-        }
-      };
+        ws.onmessage = (event: MessageEvent) => {
+          try {
+            const message = JSON.parse(event.data);
+            const eventType = message.event;
+            const eventData = message.data;
 
-      ws.onerror = () => {
-        ws?.close();
-      };
+            if (eventType === "payment_received" && eventData) {
+              const amountSats = eventData.amountSats || 0;
+              const memo = eventData.memo || tRef.current("No description");
+
+              addNotificationRef.current(
+                tRef.current("Payment Received"),
+                `${amountSats.toLocaleString()} sats - ${memo}`,
+                "success"
+              );
+
+              void fetchAllDataRef.current();
+              void refreshBtcPriceRef.current();
+              void requestsRefreshRef.current?.();
+            } else if (eventType === "payment_sent") {
+              void fetchAllDataRef.current();
+              void refreshBtcPriceRef.current();
+              void requestsRefreshRef.current?.();
+            }
+          } catch {
+            // Ignore malformed notification payloads
+          }
+        };
+
+        ws.onclose = (event: CloseEvent) => {
+          if (cancelled) return;
+          // Remint on unclean drops and policy closes (e.g. expired/used ticket).
+          if (!event.wasClean || event.code === 1008) {
+            reconnectTimeout = setTimeout(() => {
+              void connectWebSocket();
+            }, 5000);
+          }
+        };
+
+        ws.onerror = () => {
+          ws?.close();
+        };
+      } catch {
+        if (cancelled) return;
+        reconnectTimeout = setTimeout(() => {
+          void connectWebSocket();
+        }, 5000);
+      }
     };
 
-    connectWebSocket();
+    void connectWebSocket();
     return () => {
+      cancelled = true;
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
       }
