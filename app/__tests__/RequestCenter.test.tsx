@@ -29,6 +29,11 @@ vi.mock("@/app/lib/api", async () => {
     API_BASE_URL: "https://example.test/v1",
     apiCall: (...args: unknown[]) => apiCall(...args),
     publicApiGet: (...args: unknown[]) => apiCall(...args),
+    mintNotificationWsTicket: async () => ({
+      ticket: "test-ticket",
+      expiresInSeconds: 60,
+      expiresAt: "2026-08-06T22:05:00Z",
+    }),
   };
 });
 

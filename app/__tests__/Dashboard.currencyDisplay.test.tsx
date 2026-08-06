@@ -33,11 +33,22 @@ const currencyStore = {
   },
 };
 
-vi.mock("@/app/lib/api", () => ({
-  API_BASE_URL: "https://example.test/v1",
-  apiCall: (...args: unknown[]) => apiCall(...args),
-  publicApiGet: (...args: unknown[]) => publicApiGet(...args),
-}));
+vi.mock("@/app/lib/api", async () => {
+  const actual = await vi.importActual<typeof import("@/app/lib/api")>(
+    "@/app/lib/api"
+  );
+  return {
+    ...actual,
+    API_BASE_URL: "https://example.test/v1",
+    apiCall: (...args: unknown[]) => apiCall(...args),
+    publicApiGet: (...args: unknown[]) => publicApiGet(...args),
+    mintNotificationWsTicket: async () => ({
+      ticket: "test-ticket",
+      expiresInSeconds: 60,
+      expiresAt: "2026-08-06T22:05:00Z",
+    }),
+  };
+});
 
 vi.mock("@/app/hooks/useCurrency", () => ({
   useCurrency: () => {
@@ -111,6 +122,13 @@ describe("Dashboard currency display polish", () => {
     currencyStore.listeners.clear();
 
     apiCall.mockImplementation(async (endpoint: string) => {
+      if (endpoint === "/notifications/ws-ticket") {
+        return {
+          ticket: "test-ticket",
+          expiresInSeconds: 60,
+          expiresAt: "2026-08-06T22:05:00Z",
+        };
+      }
       if (endpoint === "/accounts/account") {
         return {
           id: "1",
