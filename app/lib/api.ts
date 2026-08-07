@@ -183,6 +183,33 @@ const forceLogout = () => {
   window.dispatchEvent(new Event("force-logout"));
 };
 
+/** Auth routes that must never trigger session refresh / force-logout on 401. */
+const PUBLIC_AUTH_ENDPOINTS = [
+  "/auth/login",
+  "/auth/sso/google",
+  "/auth/register",
+  "/auth/verify",
+  "/auth/refresh",
+  "/auth/forgot-password",
+  "/auth/reset-password",
+];
+
+const isPublicAuthEndpoint = (endpoint: string): boolean =>
+  PUBLIC_AUTH_ENDPOINTS.some(
+    (path) => endpoint === path || endpoint.startsWith(`${path}?`)
+  );
+
+const rejectWithApiError = async (response: Response): Promise<never> => {
+  const errorData = await response
+    .json()
+    .catch(() => ({ message: "An unknown error occurred." }));
+  const error = new Error(
+    errorData.message || `HTTP Error: ${response.status}`
+  ) as Error & { status?: number };
+  error.status = response.status;
+  throw error;
+};
+
 export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   const token = localStorage.getItem("aratiri_accessToken");
 
@@ -200,6 +227,10 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
     });
 
     if (!response.ok) {
+      if (response.status === 401 && isPublicAuthEndpoint(endpoint)) {
+        return rejectWithApiError(response);
+      }
+
       if (response.status === 401) {
         if (isRefreshing) {
           return new Promise((resolve, reject) => {

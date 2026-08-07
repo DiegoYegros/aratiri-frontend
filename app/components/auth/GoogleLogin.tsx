@@ -15,6 +15,10 @@ interface GoogleLoginProps {
   compact?: boolean;
 }
 
+const GOOGLE_CLIENT_ID =
+  process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+  "254642422573-4l9v69dl2km5c9gqj7m7hr2gli059vk8.apps.googleusercontent.com";
+
 const GoogleLogin = ({
   onSuccess,
   onError,
@@ -58,8 +62,7 @@ const GoogleLogin = ({
   useEffect(() => {
     if (scriptLoaded && buttonDiv.current && window.google?.accounts?.id) {
       window.google.accounts.id.initialize({
-        client_id:
-          "254642422573-4l9v69dl2km5c9gqj7m7hr2gli059vk8.apps.googleusercontent.com",
+        client_id: GOOGLE_CLIENT_ID,
         callback: (response: { credential?: string }) => {
           if (response.credential) {
             onSuccessRef.current(response.credential);
