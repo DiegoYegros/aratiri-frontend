@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNotifier } from "../../hooks/useNotifier";
-import { Account, API_BASE_URL, apiCall, mintNotificationWsTicket, NOTIFICATIONS_WS_SUBPROTOCOL, Transaction } from "../../lib/api";
+import { Account, API_BASE_URL, apiCall, mintNotificationWsTicket, NOTIFICATIONS_WS_SUBPROTOCOL, revokeRefreshToken, Transaction } from "../../lib/api";
 import {
   formatBtc,
   formatFiat,
@@ -358,23 +358,13 @@ export const Dashboard = ({
       onSignIn?.();
       return;
     }
-    const refreshToken = localStorage.getItem("aratiri_refreshToken");
-    try {
-      if (refreshToken) {
-        await apiCall("/auth/logout", {
-          method: "POST",
-          body: JSON.stringify({ refreshToken }),
-        });
-      }
-    } catch {
-      // Clear client session regardless of server logout result
-    } finally {
-      // Intentionally leave aratiri_spark_wallet_v1 intact.
-      localStorage.removeItem("aratiri_accessToken");
-      localStorage.removeItem("aratiri_refreshToken");
-      setToken("");
-      setIsAuthenticated(false);
-    }
+    // Raw revoke — never apiCall (would attach Bearer and may refresh/rotate first).
+    revokeRefreshToken();
+    // Intentionally leave aratiri_spark_wallet_v1 intact.
+    localStorage.removeItem("aratiri_accessToken");
+    localStorage.removeItem("aratiri_refreshToken");
+    setToken("");
+    setIsAuthenticated(false);
   };
 
   const showSpotPrice =

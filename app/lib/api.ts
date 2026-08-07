@@ -177,7 +177,26 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
+/** Best-effort refresh revoke via raw fetch (no Bearer, no apiCall/refresh). */
+export const revokeRefreshToken = (): void => {
+  const refreshToken = localStorage.getItem("aratiri_refreshToken");
+  if (!refreshToken) {
+    return;
+  }
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 3000);
+  void fetch(`${API_BASE_URL}/auth/logout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken }),
+    signal: controller.signal,
+  })
+    .catch(() => {})
+    .finally(() => clearTimeout(timeoutId));
+};
+
 const forceLogout = () => {
+  revokeRefreshToken();
   localStorage.removeItem("aratiri_accessToken");
   localStorage.removeItem("aratiri_refreshToken");
   window.dispatchEvent(new Event("force-logout"));
@@ -190,6 +209,7 @@ const PUBLIC_AUTH_ENDPOINTS = [
   "/auth/register",
   "/auth/verify",
   "/auth/refresh",
+  "/auth/logout",
   "/auth/forgot-password",
   "/auth/reset-password",
 ];
