@@ -3,8 +3,11 @@ import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { apiCall } from "../../lib/api";
 import {
+  AUTH_ALIAS_IN_USE_MESSAGE,
+  AUTH_EMAIL_IN_USE_MESSAGE,
   AUTH_EMAIL_UNAVAILABLE_MESSAGE,
-  describeAuthEmailError,
+  AUTH_REGISTER_CONFLICT_MESSAGE,
+  describeAuthRegisterError,
 } from "../../lib/authErrors";
 import { useTranslation } from "@/app/hooks/useTranslation";
 import { AuthShell } from "../ui/AuthShell";
@@ -50,7 +53,12 @@ export const RegisterScreen = ({
       setIsVerification(true);
     } catch (err: unknown) {
       setError(
-        describeAuthEmailError(err, t(AUTH_EMAIL_UNAVAILABLE_MESSAGE))
+        describeAuthRegisterError(err, {
+          emailUnavailable: t(AUTH_EMAIL_UNAVAILABLE_MESSAGE),
+          emailInUse: t(AUTH_EMAIL_IN_USE_MESSAGE),
+          aliasInUse: t(AUTH_ALIAS_IN_USE_MESSAGE),
+          conflict: t(AUTH_REGISTER_CONFLICT_MESSAGE),
+        })
       );
     } finally {
       setLoading(false);

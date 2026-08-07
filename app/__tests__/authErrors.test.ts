@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  AUTH_ALIAS_IN_USE_MESSAGE,
+  AUTH_EMAIL_IN_USE_MESSAGE,
   AUTH_EMAIL_UNAVAILABLE_MESSAGE,
+  AUTH_REGISTER_CONFLICT_MESSAGE,
   describeAuthEmailError,
+  describeAuthRegisterError,
 } from "@/app/lib/authErrors";
 
 describe("describeAuthEmailError", () => {
@@ -41,5 +45,49 @@ describe("describeAuthEmailError", () => {
     );
     const err = Object.assign(new Error("Too many requests"), { status: 429 });
     expect(describeAuthEmailError(err)).toBe("Too many requests");
+  });
+});
+
+describe("describeAuthRegisterError", () => {
+  it("maps HTTP 409 email conflict to stable email-in-use copy", () => {
+    const err = Object.assign(new Error("Email is already in use"), {
+      status: 409,
+    });
+    expect(describeAuthRegisterError(err)).toBe(AUTH_EMAIL_IN_USE_MESSAGE);
+  });
+
+  it("maps HTTP 409 alias conflict to stable alias-in-use copy", () => {
+    const err = Object.assign(new Error("Alias is already in use"), {
+      status: 409,
+    });
+    expect(describeAuthRegisterError(err)).toBe(AUTH_ALIAS_IN_USE_MESSAGE);
+  });
+
+  it("maps generic HTTP 409 to stable register-conflict copy", () => {
+    const err = Object.assign(new Error("Conflict"), { status: 409 });
+    expect(describeAuthRegisterError(err)).toBe(AUTH_REGISTER_CONFLICT_MESSAGE);
+  });
+
+  it("maps HTTP 503 to the stable email-unavailable copy", () => {
+    const err = Object.assign(new Error("Service unavailable"), {
+      status: 503,
+    });
+    expect(describeAuthRegisterError(err)).toBe(AUTH_EMAIL_UNAVAILABLE_MESSAGE);
+  });
+
+  it("uses translated conflict messages when provided", () => {
+    const err = Object.assign(new Error("Email is already in use"), {
+      status: 409,
+    });
+    expect(
+      describeAuthRegisterError(err, {
+        emailInUse: "Ese correo ya está registrado.",
+      })
+    ).toBe("Ese correo ya está registrado.");
+  });
+
+  it("passes through non-409/503 errors", () => {
+    const err = Object.assign(new Error("Too many requests"), { status: 429 });
+    expect(describeAuthRegisterError(err)).toBe("Too many requests");
   });
 });

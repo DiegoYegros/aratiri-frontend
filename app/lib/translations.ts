@@ -22,6 +22,12 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "Passwords do not match.": "Passwords do not match.",
     "Email isn't available right now. Go back and continue with Google, or use another sign-in option.":
       "Email isn't available right now. Go back and continue with Google, or use another sign-in option.",
+    "That email is already registered. Sign in or use a different email.":
+      "That email is already registered. Sign in or use a different email.",
+    "That alias is already taken. Choose a different one.":
+      "That alias is already taken. Choose a different one.",
+    "That email or alias is already in use.":
+      "That email or alias is already in use.",
     "Enter verification code": "Enter verification code",
     "Create a new account": "Create a new account",
     Name: "Name",
@@ -403,6 +409,12 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "Passwords do not match.": "Las contraseñas no coinciden.",
     "Email isn't available right now. Go back and continue with Google, or use another sign-in option.":
       "El correo no está disponible ahora. Vuelve e inicia sesión con Google, u otra opción de acceso.",
+    "That email is already registered. Sign in or use a different email.":
+      "Ese correo ya está registrado. Inicia sesión o usa otro correo.",
+    "That alias is already taken. Choose a different one.":
+      "Ese alias ya está en uso. Elige otro.",
+    "That email or alias is already in use.":
+      "Ese correo o alias ya está en uso.",
     "Enter verification code": "Ingresa el código de verificación",
     "Create a new account": "Crea una nueva cuenta",
     Name: "Nombre",
