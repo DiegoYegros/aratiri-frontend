@@ -20,6 +20,8 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     OR: "OR",
     "Create new account": "Create new account",
     "Passwords do not match.": "Passwords do not match.",
+    "Email isn't available right now. Go back and continue with Google, or use another sign-in option.":
+      "Email isn't available right now. Go back and continue with Google, or use another sign-in option.",
     "Enter verification code": "Enter verification code",
     "Create a new account": "Create a new account",
     Name: "Name",
@@ -399,6 +401,8 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     OR: "O",
     "Create new account": "Crear nueva cuenta",
     "Passwords do not match.": "Las contraseñas no coinciden.",
+    "Email isn't available right now. Go back and continue with Google, or use another sign-in option.":
+      "El correo no está disponible ahora. Vuelve e inicia sesión con Google, u otra opción de acceso.",
     "Enter verification code": "Ingresa el código de verificación",
     "Create a new account": "Crea una nueva cuenta",
     Name: "Nombre",

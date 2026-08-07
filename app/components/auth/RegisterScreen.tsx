@@ -2,6 +2,10 @@
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { apiCall } from "../../lib/api";
+import {
+  AUTH_EMAIL_UNAVAILABLE_MESSAGE,
+  describeAuthEmailError,
+} from "../../lib/authErrors";
 import { useTranslation } from "@/app/hooks/useTranslation";
 import { AuthShell } from "../ui/AuthShell";
 import { Alert } from "../ui/Alert";
@@ -44,8 +48,10 @@ export const RegisterScreen = ({
         body: JSON.stringify({ name, email, password, alias }),
       });
       setIsVerification(true);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(
+        describeAuthEmailError(err, t(AUTH_EMAIL_UNAVAILABLE_MESSAGE))
+      );
     } finally {
       setLoading(false);
     }
