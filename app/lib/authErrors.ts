@@ -18,10 +18,13 @@ const EMAIL_NOT_CONFIGURED = /Email delivery is not configured/i;
 const EMAIL_IN_USE = /email.*already in use/i;
 const ALIAS_IN_USE = /alias.*already in use/i;
 
-const getErrorStatus = (err: unknown): number | undefined =>
-  err && typeof err === "object" && "status" in err
-    ? (err as { status?: unknown }).status
-    : undefined;
+const getErrorStatus = (err: unknown): number | undefined => {
+  if (!err || typeof err !== "object" || !("status" in err)) {
+    return undefined;
+  }
+  const status = (err as { status: unknown }).status;
+  return typeof status === "number" ? status : undefined;
+};
 
 const getErrorMessage = (err: unknown): string =>
   err instanceof Error ? err.message : String(err ?? "");
