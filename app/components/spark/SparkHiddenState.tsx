@@ -18,7 +18,7 @@ export const SparkHiddenState = ({ onUnlock }: { onUnlock: () => void }) => {
         </span>
       </div>
       <h2 id="spark-hidden-heading" className="text-lg font-semibold mb-2">
-        {t("Balance hidden while locked — unlock to view.")}
+        {t("Balance hidden while locked. Unlock to view.")}
       </h2>
       <p className="text-sm text-muted mb-6 max-w-sm mx-auto">
         {t(

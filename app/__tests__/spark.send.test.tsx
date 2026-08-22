@@ -81,7 +81,7 @@ describe("SendModal Spark paths", () => {
 
     expect(apiCall).not.toHaveBeenCalled();
     expect(
-      await screen.findByText("Send to a Spark wallet — 0 fee, instant.")
+      await screen.findByText("Send to a Spark wallet. 0 fee, instant.")
     ).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Amount (sats)"), "1234");
@@ -150,7 +150,7 @@ describe("SendModal Spark paths", () => {
     await waitFor(() =>
       expect(sparkWallet.payLightningInvoice).toHaveBeenCalledWith({
         invoice: "lnbc1sparkinvoice",
-        // Math.max(5, round(500 * 0.0017)) = 5 — never a prior invoice's cap
+        // Math.max(5, round(500 * 0.0017)) = 5; never a prior invoice's cap
         maxFeeSats: 5,
         preferSpark: true,
       })

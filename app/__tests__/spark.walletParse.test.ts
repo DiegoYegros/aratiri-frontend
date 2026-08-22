@@ -83,7 +83,7 @@ describe("spark localStorage helpers", () => {
   it("never persists a mnemonic field even if passed on the object", () => {
     saveSparkWallet({
       ...complete,
-      // @ts-expect-error intentional abuse — storage must not keep secrets
+      // @ts-expect-error intentional abuse; storage must not keep secrets
       mnemonic: "abandon abandon abandon",
     });
     const raw = localStorage.getItem(SPARK_WALLET_STORAGE_KEY) ?? "";

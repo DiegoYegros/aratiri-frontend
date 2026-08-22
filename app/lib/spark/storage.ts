@@ -1,5 +1,5 @@
 /**
- * Device-local Spark wallet metadata. Never stores the mnemonic — only public
+ * Device-local Spark wallet metadata. Never stores the mnemonic, only public
  * identifiers and UI flags. Survives Aratiri logout.
  */
 
@@ -62,7 +62,7 @@ export function loadSparkWallet(): SparkWalletMeta | null {
   }
 }
 
-/** Persist public metadata only — callers must never pass a mnemonic. */
+/** Persist public metadata only; callers must never pass a mnemonic. */
 export function saveSparkWallet(meta: SparkWalletMeta): SparkWalletMeta {
   const normalized = parseSparkWalletRecord(meta);
   if (!normalized) {

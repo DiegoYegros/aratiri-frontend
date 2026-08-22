@@ -8,14 +8,14 @@ interface AuthShellProps extends PropsWithChildren {
   subtitle: string;
   /** Rail heading above the form (e.g. Sign In). */
   railTitle?: string;
-  /** Back control — placed at top of the auth rail. */
+  /** Back control, placed at top of the auth rail. */
   topLeft?: ReactNode;
   /**
    * login: lock document scroll; stage + rail fill one dvh.
    * form: longer flows; rail scrolls; page may grow on mobile.
    */
   variant?: "login" | "form";
-  /** Guest Spark entry — under the centered brand cluster. */
+  /** Guest Spark entry, under the centered brand cluster. */
   sparkSlot?: ReactNode;
 }
 

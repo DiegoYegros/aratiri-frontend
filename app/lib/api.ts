@@ -142,7 +142,7 @@ export const fetchPublicPaymentRequest = async (
 
 /**
  * Unauthenticated GET against the API base. Never attaches Authorization and
- * never force-logouts — safe for guest Spark sessions (btc price, currencies).
+ * never force-logouts, so it is safe for guest Spark sessions (btc price, currencies).
  */
 export const publicApiGet = async <T = unknown>(endpoint: string): Promise<T> => {
   const response = await fetch(`${API_BASE_URL}${endpoint}`);

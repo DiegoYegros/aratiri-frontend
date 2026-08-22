@@ -16,7 +16,7 @@ export const SparkGetStarted = ({
       <p className="font-semibold mb-1">{t("Keep your keys with Spark")}</p>
       <p className="text-sm text-muted mb-6">
         {t(
-          "A self-custody Bitcoin wallet. You hold your keys — Aratiri can't recover them, and can't take them."
+          "A self-custody Bitcoin wallet. You hold your keys. Aratiri can't recover them, and can't take them."
         )}
       </p>
       <div className="flex flex-col sm:flex-row gap-2">

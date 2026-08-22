@@ -161,7 +161,7 @@ describe("SparkHiddenState", () => {
     const onUnlock = vi.fn();
     renderWithLang(<SparkHiddenState onUnlock={onUnlock} />);
     expect(
-      screen.getByText("Balance hidden while locked — unlock to view.")
+      screen.getByText("Balance hidden while locked. Unlock to view.")
     ).toBeInTheDocument();
     expect(screen.getByText("Privacy on")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Unlock wallet" }));
@@ -181,7 +181,7 @@ describe("SparkGetStarted", () => {
 
     expect(screen.getByText("Keep your keys with Spark")).toBeInTheDocument();
     expect(
-      screen.getByText(/You hold your keys — Aratiri can't recover them/)
+      screen.getByText(/You hold your keys\. Aratiri can't recover them/)
     ).toBeInTheDocument();
     await user.click(
       screen.getByRole("button", { name: "Create a Spark wallet" })

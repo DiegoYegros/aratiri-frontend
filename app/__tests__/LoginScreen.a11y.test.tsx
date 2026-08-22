@@ -66,7 +66,7 @@ describe("LoginScreen accessibility smoke", () => {
     });
     const google = screen.getByTestId("google-login-stub");
 
-    // Stage comes before the rail in DOM — Spark precedes Google
+    // Stage comes before the rail in DOM; Spark precedes Google
     expect(
       spark.compareDocumentPosition(google) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();

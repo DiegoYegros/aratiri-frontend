@@ -244,7 +244,7 @@ describe("SparkProvider lifecycle", () => {
       try {
         await ctx.unlock(PHRASE);
       } catch {
-        // expected — the SDK hard-fails on a skewed clock
+        // expected, the SDK hard-fails on a skewed clock
       }
     });
     await waitFor(() => expect(errorText()).toMatch(/clock looks wrong/));

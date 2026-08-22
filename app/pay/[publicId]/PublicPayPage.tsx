@@ -283,7 +283,7 @@ export const PublicPayPage = ({ publicId }: PublicPayPageProps) => {
         }
         setCheckingStatus(false);
       } else if (manual || backoffMsRef.current !== null) {
-        // Mirror owner detail: uncertain/retry/manual only — not every healthy poll.
+        // Mirror owner detail: uncertain/retry/manual only, not every healthy poll.
         setCheckingStatus(true);
       }
 

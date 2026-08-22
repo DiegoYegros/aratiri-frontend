@@ -351,14 +351,14 @@ export const Dashboard = ({
       try {
         await spark.lock();
       } catch {
-        // best effort — still leave the shell
+        // best effort, still leave the shell
       }
     }
     if (isSparkOnly) {
       onSignIn?.();
       return;
     }
-    // Raw revoke — never apiCall (would attach Bearer and may refresh/rotate first).
+    // Raw revoke, never apiCall (would attach Bearer and may refresh/rotate first).
     revokeRefreshToken();
     // Intentionally leave aratiri_spark_wallet_v1 intact.
     localStorage.removeItem("aratiri_accessToken");

@@ -33,7 +33,7 @@ export const SparkOnboarding = ({
   } = useSpark();
 
   // Gate *starting* restore on missing meta. Once restore is in flight
-  // (confirm/done), keep that UI even after register sets meta — otherwise
+  // (confirm/done), keep that UI even after register sets meta. Otherwise
   // success flips into the create "Continue backup" screen.
   const canStartRestore = !meta;
   const [mode, setMode] = useState<"create" | "restore">(() =>
@@ -175,7 +175,7 @@ export const SparkOnboarding = ({
                 <p>{t("This wallet is yours alone.")}</p>
                 <p>
                   {t(
-                    "Your 12-word backup phrase is the only way to access it. If you lose it, no one — not even Aratiri — can help you recover it."
+                    "Your 12-word backup phrase is the only way to access it. If you lose it, no one, not even Aratiri, can help you recover it."
                   )}
                 </p>
               </>

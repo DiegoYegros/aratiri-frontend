@@ -141,7 +141,7 @@ export const SparkDeposit = () => {
       <p className="text-xs text-muted">
         {singleUse
           ? t(
-              "A fresh address for each deposit — best for privacy. Use the same address only once."
+              "A fresh address for each deposit, best for privacy. Use the same address only once."
             )
           : t(
               "One permanent address. Its key is shared with the payment operator, so single-use addresses are more private."

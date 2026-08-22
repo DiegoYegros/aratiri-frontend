@@ -219,23 +219,23 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
       "A 10,000-sat bond is reserved during the withdrawal and returned when it settles.",
     "A Spark wallet is already set up on this device.":
       "A Spark wallet is already set up on this device.",
-    "A fresh address for each deposit — best for privacy. Use the same address only once.":
-      "A fresh address for each deposit — best for privacy. Use the same address only once.",
-    "A self-custody Bitcoin wallet. You hold your keys — Aratiri can't recover them, and can't take them.":
-      "A self-custody Bitcoin wallet. You hold your keys — Aratiri can't recover them, and can't take them.",
-    "Amount (sats) — optional, any amount":
-      "Amount (sats) — optional, any amount",
+    "A fresh address for each deposit, best for privacy. Use the same address only once.":
+      "A fresh address for each deposit, best for privacy. Use the same address only once.",
+    "A self-custody Bitcoin wallet. You hold your keys. Aratiri can't recover them, and can't take them.":
+      "A self-custody Bitcoin wallet. You hold your keys. Aratiri can't recover them, and can't take them.",
+    "Amount (sats), optional, any amount":
+      "Amount (sats), optional, any amount",
     "Amount must be greater than the fee ({fee} sats) when the fee is deducted from the withdrawal.":
       "Amount must be greater than the fee ({fee} sats) when the fee is deducted from the withdrawal.",
     "Aratiri holds your keys.": "Aratiri holds your keys.",
     "Backup phrase": "Backup phrase",
     "Backup status": "Backup status",
-    "Backup verified — you have a written copy of your phrase.":
-      "Backup verified — you have a written copy of your phrase.",
+    "Backup verified. You have a written copy of your phrase.":
+      "Backup verified. You have a written copy of your phrase.",
     "Balance as of last sync. Unlock for live data and signing.":
       "Balance as of last sync. Unlock for live data and signing.",
-    "Balance hidden while locked — unlock to view.":
-      "Balance hidden while locked — unlock to view.",
+    "Balance hidden while locked. Unlock to view.":
+      "Balance hidden while locked. Unlock to view.",
     Cancel: "Cancel",
     "Check it matches the address you expect before continuing. A wrong phrase opens a different wallet.":
       "Check it matches the address you expect before continuing. A wrong phrase opens a different wallet.",
@@ -284,8 +284,8 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "Generate another": "Generate another",
     "Generating address...": "Generating address...",
     "I've written it down": "I've written it down",
-    "I've written it down — mark as backed up":
-      "I've written it down — mark as backed up",
+    "I've written it down, mark as backed up":
+      "I've written it down, mark as backed up",
     "Keep your keys with Spark": "Keep your keys with Spark",
     "Lightning invoice": "Lightning invoice",
     "LNURL callback returned an invalid invoice.":
@@ -328,8 +328,8 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "Self-custody with Spark": "Self-custody with Spark",
     "Self-custody wallet": "Self-custody wallet",
     "Send {amount} sats": "Send {amount} sats",
-    "Send to a Spark wallet — 0 fee, instant.":
-      "Send to a Spark wallet — 0 fee, instant.",
+    "Send to a Spark wallet. 0 fee, instant.":
+      "Send to a Spark wallet. 0 fee, instant.",
     "Single-use": "Single-use",
     Spark: "Spark",
     "Spark fee (0.25% + routing)": "Spark fee (0.25% + routing)",
@@ -383,8 +383,8 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
       "You hold your keys. Aratiri can't recover them.",
     "You pay the network fee on the sending side.":
       "You pay the network fee on the sending side.",
-    "Your 12-word backup phrase is the only way to access it. If you lose it, no one — not even Aratiri — can help you recover it.":
-      "Your 12-word backup phrase is the only way to access it. If you lose it, no one — not even Aratiri — can help you recover it.",
+    "Your 12-word backup phrase is the only way to access it. If you lose it, no one, not even Aratiri, can help you recover it.":
+      "Your 12-word backup phrase is the only way to access it. If you lose it, no one, not even Aratiri, can help you recover it.",
     "Your Spark wallet is ready. Here is your address:":
       "Your Spark wallet is ready. Here is your address:",
     "Your backup is verified.": "Your backup is verified.",
@@ -608,22 +608,22 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
       "Durante el retiro se reserva un depósito de garantía de 10.000 sats que se devuelve al completarse.",
     "A Spark wallet is already set up on this device.":
       "Ya hay una billetera Spark configurada en este dispositivo.",
-    "A fresh address for each deposit — best for privacy. Use the same address only once.":
+    "A fresh address for each deposit, best for privacy. Use the same address only once.":
       "Una dirección nueva para cada depósito, lo mejor para tu privacidad. Usa la misma dirección solo una vez.",
-    "A self-custody Bitcoin wallet. You hold your keys — Aratiri can't recover them, and can't take them.":
+    "A self-custody Bitcoin wallet. You hold your keys. Aratiri can't recover them, and can't take them.":
       "Una billetera de Bitcoin con autocustodia. Tus claves están en tus manos: Aratiri no puede recuperarlas ni tomarlas.",
-    "Amount (sats) — optional, any amount":
+    "Amount (sats), optional, any amount":
       "Monto (sats): opcional, cualquier monto",
     "Amount must be greater than the fee ({fee} sats) when the fee is deducted from the withdrawal.":
       "El monto debe ser mayor que la comisión ({fee} sats) cuando la comisión se descuenta del retiro.",
     "Aratiri holds your keys.": "Aratiri guarda tus claves.",
     "Backup phrase": "Frase de respaldo",
     "Backup status": "Estado del respaldo",
-    "Backup verified — you have a written copy of your phrase.":
+    "Backup verified. You have a written copy of your phrase.":
       "Respaldo verificado: tienes una copia escrita de tu frase.",
     "Balance as of last sync. Unlock for live data and signing.":
       "Saldo según la última sincronización. Desbloquea para ver datos en vivo y firmar.",
-    "Balance hidden while locked — unlock to view.":
+    "Balance hidden while locked. Unlock to view.":
       "Saldo oculto mientras esté bloqueada: desbloquea para verlo.",
     Cancel: "Cancelar",
     "Check it matches the address you expect before continuing. A wrong phrase opens a different wallet.":
@@ -675,7 +675,7 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "Generate another": "Generar otra",
     "Generating address...": "Generando dirección...",
     "I've written it down": "Lo he escrito",
-    "I've written it down — mark as backed up":
+    "I've written it down, mark as backed up":
       "Lo he escrito: marcar como respaldado",
     "Keep your keys with Spark": "Mantén tus claves con Spark",
     "Lightning invoice": "Factura Lightning",
@@ -719,7 +719,7 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
     "Self-custody with Spark": "Autocustodia con Spark",
     "Self-custody wallet": "Billetera de autocustodia",
     "Send {amount} sats": "Enviar {amount} sats",
-    "Send to a Spark wallet — 0 fee, instant.":
+    "Send to a Spark wallet. 0 fee, instant.":
       "Enviar a una billetera Spark: sin comisión, al instante.",
     "Single-use": "De un solo uso",
     Spark: "Spark",
@@ -774,7 +774,7 @@ export const translations: Record<LanguageCode, TranslationDictionary> = {
       "Tus claves están en tus manos. Aratiri no puede recuperarlas.",
     "You pay the network fee on the sending side.":
       "Pagas la comisión de red del lado del envío.",
-    "Your 12-word backup phrase is the only way to access it. If you lose it, no one — not even Aratiri — can help you recover it.":
+    "Your 12-word backup phrase is the only way to access it. If you lose it, no one, not even Aratiri, can help you recover it.":
       "Tu frase de respaldo de 12 palabras es la única forma de acceder. Si la pierdes, nadie, ni siquiera Aratiri, podrá ayudarte a recuperarla.",
     "Your Spark wallet is ready. Here is your address:":
       "Tu billetera Spark está lista. Esta es tu dirección:",

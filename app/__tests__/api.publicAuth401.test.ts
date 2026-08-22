@@ -191,7 +191,7 @@ describe("apiCall public-auth 401", () => {
             typeof call[0] === "string" && /\/auth\/refresh$/.test(call[0])
         )
     ).toBe(false);
-    // Helper does not clear storage — callers clear after revoke.
+    // Helper does not clear storage. Callers clear after revoke.
     expect(localStorage.getItem("aratiri_refreshToken")).toBe("refresh-token");
   });
 

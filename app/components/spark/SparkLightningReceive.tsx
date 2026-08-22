@@ -141,7 +141,7 @@ export const SparkLightningReceive = ({
           placeholder={
             requireAmount
               ? t("Amount (sats)")
-              : t("Amount (sats) — optional, any amount")
+              : t("Amount (sats), optional, any amount")
           }
           className={fieldClass}
         />

@@ -530,7 +530,7 @@ export const RequestDetailModal = ({
         return;
       }
       if (isTransientPaymentRequestError(err)) {
-        // Local UI uncertainty only — do not write CANCEL_PENDING into status.
+        // Local UI uncertainty only. Do not write CANCEL_PENDING into status.
         const baseline = requestRef.current;
         if (baseline) {
           loadGenerationRef.current += 1;

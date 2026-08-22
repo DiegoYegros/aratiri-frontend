@@ -53,7 +53,7 @@ export interface SparkContextValue {
   meta: SparkWalletMeta | null;
   error: string | null;
   mnemonic: string | null;
-  /** Live SDK wallet instance — present only while unlocked. */
+  /** Live SDK wallet instance, present only while unlocked. */
   wallet: SparkWalletInstance | null;
   balance: SparkBalance | null;
   transactions: SparkTransferRow[] | null;
@@ -74,7 +74,7 @@ export interface SparkContextValue {
   /**
    * Begin polling an async outgoing operation (lightning send / coop-exit
    * withdrawal) until it reaches a terminal state, then refresh. Single
-   * active poller — re-entry replaces the previous one.
+   * active poller; re-entry replaces the previous one.
    */
   trackOutgoing: (kind: "lightning" | "withdrawal", id: string) => void;
 }
@@ -282,7 +282,7 @@ export const SparkProvider = ({ children }: PropsWithChildren) => {
         try {
           await w.cleanup();
         } catch {
-          // best effort — do not leave an orphan SDK wallet
+          // best effort, do not leave an orphan SDK wallet
         }
       }
       const message = describeSparkError(
@@ -321,7 +321,7 @@ export const SparkProvider = ({ children }: PropsWithChildren) => {
           try {
             await w.cleanup();
           } catch {
-            // best effort — do not leave an orphan SDK wallet
+            // best effort, do not leave an orphan SDK wallet
           }
         }
         const message = describeSparkError(
@@ -403,7 +403,7 @@ export const SparkProvider = ({ children }: PropsWithChildren) => {
       try {
         await current.cleanup();
       } catch {
-        // best effort — the readonly path still serves the locked view
+        // best effort; the readonly path still serves the locked view
       }
     }
     walletRef.current = null;
@@ -500,7 +500,7 @@ export const SparkProvider = ({ children }: PropsWithChildren) => {
             }
             void refresh();
           } catch {
-            // transient network error — keep polling
+            // transient network error, keep polling
           }
         })();
       }, 4000);
@@ -532,7 +532,7 @@ export const SparkProvider = ({ children }: PropsWithChildren) => {
   }, [buildReadonly, refresh, setError]);
 
   // Custodial force-logout must clear in-memory mnemonic/wallet without wiping
-  // device meta — SparkProvider now stays mounted across auth transitions.
+  // device meta: SparkProvider now stays mounted across auth transitions.
   useEffect(() => {
     const onForceLogout = () => {
       void lock();

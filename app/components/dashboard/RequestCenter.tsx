@@ -45,7 +45,7 @@ const mergeUniqueByPublicId = (
   return merged;
 };
 
-/** Quiet right-rail status color (list only — no chip/badge chrome). */
+/** Quiet right-rail status color (list only, no chip/badge chrome). */
 const statusTextClass: Record<PaymentRequestStatus | "unknown", string> = {
   provisioning: "text-pending",
   open: "text-pending",

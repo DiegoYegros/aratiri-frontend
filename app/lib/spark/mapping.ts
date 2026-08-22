@@ -61,7 +61,7 @@ export const toHex = (bytes: Uint8Array): string =>
 /**
  * gRPC `TransferType` numeric ids (readonly/query_all_transfers path):
  * 0 = PREIMAGE_SWAP (lightning), 1 = COOPERATIVE_EXIT (withdrawal),
- * 2 = TRANSFER (spark); 3/4/5/30/40 are swap side-effects — shown as spark.
+ * 2 = TRANSFER (spark). 3/4/5/30/40 are swap side-effects, shown as spark.
  */
 const NUMERIC_KIND: Record<number, SparkTransferKind> = {
   0: "lightning",
@@ -142,8 +142,8 @@ export const SPARK_ALREADY_LINKED_MESSAGE =
 /**
  * The SDK hard-fails when the device clock is >2 min off (signature
  * timestamp / invoice expiry validation). Surface that clearly instead of
- * the raw error. Also maps device-scoped Spark conflicts by message text only —
- * never remap bare/generic HTTP 409s (shared with SendModal payment errors).
+ * the raw error. Also maps device-scoped Spark conflicts by message text only.
+ * Never remap bare/generic HTTP 409s (shared with SendModal payment errors).
  */
 export const describeSparkError = (
   err: unknown,

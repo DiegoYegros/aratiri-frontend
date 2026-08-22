@@ -137,7 +137,7 @@ export const SendModal = ({
     setDeductFeeFromAmount(true);
 
     try {
-      // Spark addresses are not in Aratiri's decoder — resolve client-side.
+      // Spark addresses are not in Aratiri's decoder, so resolve client-side.
       if (isSpark && isSparkAddress(valueToDecode)) {
         setDecoded({
           type: "spark_address",
@@ -294,7 +294,7 @@ export const SendModal = ({
             comment: lnurlComment || undefined,
           });
           // LUD-06: verify the returned invoice amount before signing.
-          // Decode-only via Aratiri — never pay through custodial endpoints.
+          // Decode-only via Aratiri; never pay through custodial endpoints.
           const decodedInvoice: DecodedResponse = await apiCall(
             `/decoder?input=${encodeURIComponent(bolt11)}`
           );
@@ -313,7 +313,7 @@ export const SendModal = ({
               )
             );
           }
-          // Always derive the LNURL cap from this payment's amount — never reuse
+          // Always derive the LNURL cap from this payment's amount. Never reuse
           // a prior BOLT11 session's sparkMaxFee.
           const cap = Math.max(5, Math.round(amountSats * 0.0017));
           data = await sparkWallet.payLightningInvoice({
@@ -484,7 +484,7 @@ export const SendModal = ({
           <div className="mt-6 bg-input border border-panel-edge p-4 rounded-lg space-y-4 animate-fade-in">
             <h3 className="font-semibold text-lg">{t("Spark transfer")}</h3>
             <p className="text-sm text-muted">
-              {t("Send to a Spark wallet — 0 fee, instant.")}
+              {t("Send to a Spark wallet. 0 fee, instant.")}
             </p>
             <p className="font-address text-xs break-all text-left">{address}</p>
             <div className="relative">

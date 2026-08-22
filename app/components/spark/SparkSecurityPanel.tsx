@@ -106,7 +106,7 @@ export const SparkSecurityPanel = () => {
         <p className="text-sm font-semibold mb-1">{t("Backup status")}</p>
         {meta.backup_verified ? (
           <p className="text-sm text-success">
-            {t("Backup verified — you have a written copy of your phrase.")}
+            {t("Backup verified. You have a written copy of your phrase.")}
           </p>
         ) : (
           <>

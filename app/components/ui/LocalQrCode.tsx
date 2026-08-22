@@ -10,7 +10,7 @@ interface LocalQrCodeProps {
   className?: string;
 }
 
-/** Renders a QR code locally — invoice data never leaves the browser. */
+/** Renders a QR code locally; invoice data never leaves the browser. */
 export const LocalQrCode = ({
   value,
   alt,

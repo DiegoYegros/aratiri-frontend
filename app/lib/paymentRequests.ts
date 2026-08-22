@@ -132,7 +132,7 @@ export const isFinalPaymentRequestStatus = (
   status: PaymentRequestStatus | "unknown"
 ): boolean => status === "paid";
 
-/** OPEN / PROVISIONING / CANCEL_PENDING — normal-frequency polling. */
+/** OPEN / PROVISIONING / CANCEL_PENDING, normal-frequency polling. */
 export const isActiveReconcilableStatus = (
   status: PaymentRequestStatus | "unknown"
 ): boolean =>
@@ -141,7 +141,7 @@ export const isActiveReconcilableStatus = (
   status === "cancel_pending";
 
 /**
- * CANCELLED / EXPIRED / FAILED — bounded low-frequency late-settlement polls
+ * CANCELLED / EXPIRED / FAILED. Bounded low-frequency late-settlement polls
  * (PAID may still win).
  */
 export const isTerminalReconcilableStatus = (
